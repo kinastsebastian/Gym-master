@@ -106,15 +106,23 @@ export default function App() {
     <div className="min-h-screen bg-black text-zinc-300 p-4 font-sans pb-28 selection:bg-red-900 selection:text-white">
       <div className="max-w-md mx-auto">
         
-        {/* Encabezado Espartano (Bordes afilados) */}
+        {/* Encabezado Espartano (Bordes afilados y Espadas Cruzadas) */}
         <div className="flex items-center justify-center gap-3 mb-6 mt-2">
           <div className="w-12 h-12 bg-gradient-to-br from-red-700 to-red-950 rounded-none flex items-center justify-center border-2 border-red-800 shadow-[0_0_15px_rgba(220,38,38,0.4)]">
-            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" />
+              <line x1="13" y1="19" x2="19" y2="13" />
+              <line x1="16" y1="16" x2="20" y2="20" />
+              <line x1="19" y1="21" x2="21" y2="19" />
+              <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" />
+              <line x1="5" y1="14" x2="9" y2="18" />
+              <line x1="7" y1="17" x2="4" y2="20" />
+              <line x1="3" y1="19" x2="5" y2="21" />
             </svg>
           </div>
           <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Monk Killer</h1>
         </div>
+        
 
         {/* Navegación (Pestañas cuadradas) */}
         <div className="flex bg-zinc-900 p-1 rounded-sm mb-6 border border-zinc-800">
