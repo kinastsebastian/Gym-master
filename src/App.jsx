@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -16,6 +16,12 @@ export default function App() {
   const [fechaEntreno, setFechaEntreno] = useState(hoy);
   const [setsDetalle, setSetsDetalle] = useState([{ setNum: 1, reps: '', peso: '', unidad: 'kg' }]);
   const [notas, setNotas] = useState('');
+  const [notaAnterior, setNotaAnterior] = useState(''); // Memoria de notas
+
+  // Estados del Cronómetro
+  const [tiempoDescanso, setTiempoDescanso] = useState(0);
+  const [timerActivo, setTimerActivo] = useState(false);
+  const timerRef = useRef(null);
 
   const tiposRutina = ['Full Body', 'Upper Body', 'Lower Body', 'Arms/Delts', 'Legs', 'Push', 'Pull'];
 
@@ -35,6 +41,42 @@ export default function App() {
   useEffect(() => {
     if (ejercicioFiltro) cargarDatosGrafico();
   }, [ejercicioFiltro]);
+
+  // Lógica del Cronómetro
+  useEffect(() => {
+    if (timerActivo && tiempoDescanso > 0) {
+      timerRef.current = setInterval(() => {
+        setTiempoDescanso((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            setTimerActivo(false);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]); // Vibra al terminar
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [timerActivo, tiempoDescanso]);
+
+  const iniciarTimer = (segundos) => {
+    setTiempoDescanso(segundos);
+    setTimerActivo(true);
+  };
+
+  const detenerTimer = () => {
+    setTimerActivo(false);
+    setTiempoDescanso(0);
+  };
+
+  const formatearTiempo = (segundos) => {
+    const m = Math.floor(segundos / 60).toString().padStart(2, '0');
+    const s = (segundos % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   const cargarEjerciciosDia = async () => {
     const { data } = await supabase.from('gym_logs').select('*').eq('tipo_dia', rutinaActual).order('created_at', { ascending: false }).limit(30);
@@ -87,14 +129,51 @@ export default function App() {
     setSetsDetalle(setsDetalle.filter((_, i) => i !== index).map((s, i) => ({ ...s, setNum: i + 1 })));
   };
 
-  const usarPlantillaRapida = (plantilla) => {
+  // MEMORIA DE HIERRO: Carga pesos y notas anteriores
+  const usarPlantillaRapida = async (plantilla) => {
     setNombreEjercicio(plantilla.nombre_ejercicio);
-    const nuevosSets = [];
-    const cantidadSets = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
-    for (let i = 0; i < cantidadSets; i++) {
-      nuevosSets.push({ setNum: i + 1, reps: '', peso: '', unidad: 'kg' });
+    setNotaAnterior('');
+    setNotas('');
+    
+    // Buscar la última vez que se hizo este ejercicio
+    const { data } = await supabase.from('gym_logs')
+      .select('sets_realizados, notas')
+      .eq('nombre_ejercicio', plantilla.nombre_ejercicio)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      // Si hay historial, pre-llenar los sets con los pesos anteriores (dejando reps vacías para hoy)
+      const setsAnteriores = data[0].sets_realizados;
+      const nuevosSets = setsAnteriores.map(s => ({
+        setNum: s.setNum,
+        reps: '', // Obliga a anotar las reps de hoy
+        peso: s.peso,
+        unidad: s.unidad
+      }));
+      
+      // Si la meta_sets actual es mayor a los sets que hizo la última vez, agregar filas extra
+      const cantidadSetsMeta = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
+      while (nuevosSets.length < cantidadSetsMeta) {
+        nuevosSets.push({ setNum: nuevosSets.length + 1, reps: '', peso: nuevosSets[nuevosSets.length - 1].peso, unidad: nuevosSets[nuevosSets.length - 1].unidad });
+      }
+      
+      setSetsDetalle(nuevosSets);
+      
+      // Mostrar la nota anterior
+      if (data[0].notas) {
+        setNotaAnterior(data[0].notas);
+      }
+    } else {
+      // Si no hay historial, cargar la cantidad de sets en blanco
+      const nuevosSets = [];
+      const cantidadSets = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
+      for (let i = 0; i < cantidadSets; i++) {
+        nuevosSets.push({ setNum: i + 1, reps: '', peso: '', unidad: 'kg' });
+      }
+      setSetsDetalle(nuevosSets);
     }
-    setSetsDetalle(nuevosSets);
+
     window.scrollTo({ top: document.getElementById('form-registro').offsetTop - 20, behavior: 'smooth' });
   };
 
@@ -122,6 +201,7 @@ export default function App() {
     setNombreEjercicio('');
     setSetsDetalle([{ setNum: 1, reps: '', peso: '', unidad: 'kg' }]);
     setNotas('');
+    setNotaAnterior('');
     setFechaEntreno(hoy);
   };
 
@@ -131,6 +211,7 @@ export default function App() {
     setFechaEntreno(ej.created_at ? ej.created_at.split('T')[0] : hoy);
     setSetsDetalle(ej.sets_realizados || [{ setNum: 1, reps: '', peso: '', unidad: 'kg' }]);
     setNotas(ej.notas || '');
+    setNotaAnterior('');
     window.scrollTo({ top: document.getElementById('form-registro').offsetTop - 20, behavior: 'smooth' });
   };
 
@@ -192,42 +273,27 @@ export default function App() {
               </select>
             </div>
 
-            {/* ================= NUEVO DESTROYER CONTRACT ================= */}
+            {/* ================= DESTROYER CONTRACT ================= */}
             {!idEditando && ejerciciosPlaneadosHoy.length > 0 && (
               <div className="bg-zinc-900 border border-zinc-800 rounded-sm p-4 mb-6 shadow-lg">
                 <h2 className="text-xs font-black text-red-500 uppercase tracking-widest mb-4 flex items-center justify-center gap-2 border-b border-zinc-800 pb-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
                   DESTROYER CONTRACT
                 </h2>
-                
                 <div className="space-y-3">
                   {ejerciciosPlaneadosHoy.map(p => {
-                    const completado = ejercicios.some(ej => 
-                      ej.nombre_ejercicio.toLowerCase() === p.nombre_ejercicio.toLowerCase() && 
-                      ej.created_at.includes(fechaEntreno)
-                    );
-                    
+                    const completado = ejercicios.some(ej => ej.nombre_ejercicio.toLowerCase() === p.nombre_ejercicio.toLowerCase() && ej.created_at.includes(fechaEntreno));
                     return (
                       <div key={p.id} className={`flex items-center justify-between p-3 border rounded-sm transition-all ${completado ? 'bg-black border-zinc-900 opacity-60' : 'bg-zinc-950 border-zinc-700 hover:border-red-900/50'}`}>
-                        {/* Alineación Centrada solicitada */}
                         <div className="flex-1 text-center px-2">
-                           <div className={`font-bold uppercase text-sm break-words ${completado ? 'text-zinc-600 line-through' : 'text-zinc-200'}`}>
-                             {p.nombre_ejercicio}
-                           </div>
-                           <div className="text-[10px] font-black text-zinc-500 uppercase mt-1 tracking-wider">
-                             Meta: {p.meta_sets > 0 ? p.meta_sets : '-'} Sets | {p.meta_reps || '-'} Reps
-                           </div>
+                           <div className={`font-bold uppercase text-sm break-words ${completado ? 'text-zinc-600 line-through' : 'text-zinc-200'}`}>{p.nombre_ejercicio}</div>
+                           <div className="text-[10px] font-black text-zinc-500 uppercase mt-1 tracking-wider">Meta: {p.meta_sets > 0 ? p.meta_sets : '-'} Sets | {p.meta_reps || '-'} Reps</div>
                         </div>
-                        
                         <div className="flex-shrink-0 ml-2">
                           {completado ? (
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-sm p-1.5 text-green-700">
-                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
-                            </div>
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-sm p-1.5 text-green-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg></div>
                           ) : (
-                            <button type="button" onClick={() => usarPlantillaRapida(p)} className="bg-red-900/20 text-red-500 border border-red-900/50 hover:bg-red-800 hover:text-white px-3 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
-                              Cargar
-                            </button>
+                            <button type="button" onClick={() => usarPlantillaRapida(p)} className="bg-red-900/20 text-red-500 border border-red-900/50 hover:bg-red-800 hover:text-white px-3 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">Cargar</button>
                           )}
                         </div>
                       </div>
@@ -236,6 +302,21 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {/* ================= CRONÓMETRO INDEPENDIENTE ================= */}
+            <div className="bg-zinc-950 border border-zinc-800 rounded-sm p-3 mb-6 flex flex-col items-center justify-center">
+              <div className={`text-3xl font-black font-mono tracking-tighter mb-2 ${tiempoDescanso > 0 && tiempoDescanso <= 10 ? 'text-red-500 animate-pulse' : 'text-zinc-100'}`}>
+                {formatearTiempo(tiempoDescanso)}
+              </div>
+              <div className="flex gap-2 w-full">
+                <button type="button" onClick={() => iniciarTimer(60)} className="flex-1 bg-zinc-900 border border-zinc-700 hover:border-red-600 text-xs font-bold text-zinc-300 py-2 rounded-sm transition-colors">60s</button>
+                <button type="button" onClick={() => iniciarTimer(90)} className="flex-1 bg-zinc-900 border border-zinc-700 hover:border-red-600 text-xs font-bold text-zinc-300 py-2 rounded-sm transition-colors">90s</button>
+                <button type="button" onClick={() => iniciarTimer(120)} className="flex-1 bg-zinc-900 border border-zinc-700 hover:border-red-600 text-xs font-bold text-zinc-300 py-2 rounded-sm transition-colors">2m</button>
+                {timerActivo && (
+                  <button type="button" onClick={detenerTimer} className="flex-1 bg-red-900/50 border border-red-800 text-red-100 text-xs font-bold py-2 rounded-sm hover:bg-red-800 transition-colors">✕</button>
+                )}
+              </div>
+            </div>
 
             <form id="form-registro" onSubmit={guardarOActualizarEjercicio} className={`bg-zinc-900 p-5 rounded-sm mb-8 border transition-all shadow-2xl relative overflow-hidden ${idEditando ? 'border-amber-600 shadow-[0_0_15px_rgba(217,119,6,0.2)]' : 'border-zinc-800'}`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-red-900/10 blur-3xl"></div>
@@ -271,7 +352,14 @@ export default function App() {
                   </div>
                 </div>
 
-                <textarea placeholder="Notas (fallo muscular, técnica...)" className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-zinc-300 placeholder-zinc-600 focus:ring-1 focus:ring-red-600 outline-none transition-all mb-5 text-sm resize-none text-center" rows="2" value={notas} onChange={(e) => setNotas(e.target.value)} />
+                {/* MEMORIA DE NOTAS */}
+                {notaAnterior && (
+                  <div className="bg-amber-900/20 border-l-2 border-amber-600 p-2 mb-2 rounded-r-sm flex flex-col">
+                    <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Nota Anterior:</span>
+                    <span className="text-xs text-amber-200/80 italic mt-0.5 font-medium">"{notaAnterior}"</span>
+                  </div>
+                )}
+                <textarea placeholder="Tus notas de hoy (fallo, sensaciones...)" className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-zinc-300 placeholder-zinc-600 focus:ring-1 focus:ring-red-600 outline-none transition-all mb-5 text-sm resize-none text-center" rows="2" value={notas} onChange={(e) => setNotas(e.target.value)} />
 
                 <div className="flex gap-2">
                   <button type="submit" disabled={guardando} className={`w-full font-black uppercase tracking-widest py-4 px-4 rounded-sm transition-all active:scale-95 disabled:opacity-50 border ${idEditando ? 'bg-amber-600 hover:bg-amber-500 border-amber-500 text-black' : 'bg-red-700 hover:bg-red-600 border-red-600 text-white shadow-[0_0_20px_rgba(185,28,28,0.3)]'}`}>
@@ -290,7 +378,6 @@ export default function App() {
                 {ejercicios.map((ej) => (
                   <div key={ej.id} onClick={() => prepararEdicion(ej)} className="bg-zinc-900 border border-zinc-800 rounded-sm p-4 cursor-pointer hover:border-red-900/50">
                     <div className="flex justify-between items-start mb-2">
-                      {/* Historial centrado */}
                       <div className="flex-1 text-center px-2">
                         <div className="font-bold text-zinc-100 text-lg uppercase tracking-wide break-words">{ej.nombre_ejercicio}</div>
                         <div className="text-[10px] text-red-600/80 font-bold mt-0.5 tracking-wider uppercase">{new Date(ej.created_at).toLocaleDateString('es-CL')}</div>
@@ -338,7 +425,6 @@ export default function App() {
                       <div className="space-y-3">
                         {ejerciciosTipo.map(item => (
                           <div key={item.id} className="flex justify-between items-center text-sm bg-zinc-900 p-2 rounded-sm border border-zinc-800/50">
-                            {/* Plantillas centradas */}
                             <div className="flex-1 text-center px-2">
                               <div className="text-zinc-200 font-bold uppercase break-words">{item.nombre_ejercicio}</div>
                               <div className="text-zinc-500 text-[10px] font-black uppercase tracking-wider mt-0.5">{item.meta_sets} sets • {item.meta_reps} reps</div>
