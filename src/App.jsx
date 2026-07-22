@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function App() {
-  const [tabActiva, setTabActiva] = useState('entrenar'); // 'entrenar', 'rutinas', 'progreso'
+  const [tabActiva, setTabActiva] = useState('entrenar'); 
   
   const [rutinaActual, setRutinaActual] = useState('Full Body');
   const [ejercicios, setEjercicios] = useState([]);
@@ -12,7 +12,7 @@ export default function App() {
 
   const hoy = new Date().toISOString().split('T')[0];
   
-  // Estado para el formulario de entrenamiento detallado por sets
+  // Formulario de entrenamiento
   const [nombreEjercicio, setNombreEjercicio] = useState('');
   const [fechaEntreno, setFechaEntreno] = useState(hoy);
   const [setsDetalle, setSetsDetalle] = useState([
@@ -20,59 +20,58 @@ export default function App() {
   ]);
   const [notas, setNotas] = useState('');
 
-  const tiposRutina = ['Full Body', 'Upper Body', 'Lower Body', 'Arms/Delts'];
+  const tiposRutina = ['Full Body', 'Upper Body', 'Lower Body', 'Arms/Delts', 'Legs', 'Push', 'Pull'];
 
-  // Pestaña Rutinas (Plantillas / Planificación)
+  // Plantillas de Rutinas (Desde Supabase)
   const [plantillas, setPlantillas] = useState([]);
   const [nuevaPlantilla, setNuevaPlantilla] = useState({ rutina: 'Full Body', ejercicio: '', metaSets: 3, metaReps: '' });
 
-  // Pestaña Progreso
+  // Historial de nombres para autocompletado
   const [listaEjerciciosHistorico, setListaEjerciciosHistorico] = useState([]);
   const [ejercicioFiltro, setEjercicioFiltro] = useState('');
   const [datosGrafico, setDatosGrafico] = useState([]);
 
+  // Cargas iniciales
   useEffect(() => {
-    if (tabActiva === 'entrenar') cargarEjerciciosDia();
+    cargarEjerciciosDia();
+    cargarPlantillas();
+    cargarListaNombresEjercicios();
   }, [rutinaActual, tabActiva]);
-
-  useEffect(() => {
-    if (tabActiva === 'progreso') cargarListaNombresEjercicios();
-  }, [tabActiva]);
 
   useEffect(() => {
     if (ejercicioFiltro) cargarDatosGrafico();
   }, [ejercicioFiltro]);
 
   const cargarEjerciciosDia = async () => {
-    const { data } = await supabase
-      .from('gym_logs')
-      .select('*')
-      .eq('tipo_dia', rutinaActual)
-      .order('created_at', { ascending: false })
-      .limit(30);
+    const { data } = await supabase.from('gym_logs').select('*').eq('tipo_dia', rutinaActual).order('created_at', { ascending: false }).limit(30);
     if (data) setEjercicios(data);
   };
 
+  const cargarPlantillas = async () => {
+    const { data } = await supabase.from('gym_rutinas').select('*').order('created_at', { ascending: true });
+    if (data) setPlantillas(data);
+  };
+
   const cargarListaNombresEjercicios = async () => {
-    const { data } = await supabase.from('gym_logs').select('nombre_ejercicio').order('created_at', { ascending: false });
-    if (data) {
-      const unicos = [...new Set(data.map(d => d.nombre_ejercicio))];
-      setListaEjerciciosHistorico(unicos);
-      if (unicos.length > 0 && !ejercicioFiltro) setEjercicioFiltro(unicos[0]);
-    }
+    // Busca nombres tanto en logs pasados como en rutinas creadas para el autocompletado
+    const { data: logs } = await supabase.from('gym_logs').select('nombre_ejercicio');
+    const { data: ruts } = await supabase.from('gym_rutinas').select('nombre_ejercicio');
+    
+    const todos = [
+      ...(logs ? logs.map(d => d.nombre_ejercicio) : []),
+      ...(ruts ? ruts.map(d => d.nombre_ejercicio) : [])
+    ];
+    
+    const unicos = [...new Set(todos)].sort();
+    setListaEjerciciosHistorico(unicos);
+    if (unicos.length > 0 && !ejercicioFiltro) setEjercicioFiltro(unicos[0]);
   };
 
   const cargarDatosGrafico = async () => {
-    const { data } = await supabase
-      .from('gym_logs')
-      .select('created_at, sets_realizados')
-      .eq('nombre_ejercicio', ejercicioFiltro)
-      .order('created_at', { ascending: true });
-    
+    const { data } = await supabase.from('gym_logs').select('created_at, sets_realizados').eq('nombre_ejercicio', ejercicioFiltro).order('created_at', { ascending: true });
     if (data) {
       const datosAgrupados = data.reduce((acc, current) => {
         const fechaCorta = new Date(current.created_at).toLocaleDateString('es-CL', { month: 'short', day: 'numeric' });
-        // Buscar el peso máximo levantado entre todos los sets de ese día
         const pesosDelDia = current.sets_realizados.map(s => parseFloat(s.peso) || 0);
         const maxPeso = pesosDelDia.length > 0 ? Math.max(...pesosDelDia) : 0;
 
@@ -85,13 +84,10 @@ export default function App() {
     }
   };
 
-  // Manejo de dinámicas de sets en el formulario
+  // Dinámica de Sets
   const agregarFilaSet = () => {
     const ultimoSet = setsDetalle[setsDetalle.length - 1];
-    setSetsDetalle([
-      ...setsDetalle, 
-      { setNum: setsDetalle.length + 1, reps: '', peso: ultimoSet ? ultimoSet.peso : '', unidad: ultimoSet ? ultimoSet.unidad : 'kg' }
-    ]);
+    setSetsDetalle([...setsDetalle, { setNum: setsDetalle.length + 1, reps: '', peso: ultimoSet ? ultimoSet.peso : '', unidad: ultimoSet ? ultimoSet.unidad : 'kg' }]);
   };
 
   const actualizarFilaSet = (index, campo, valor) => {
@@ -106,38 +102,36 @@ export default function App() {
     setSetsDetalle(nuevosSets);
   };
 
+  // Aplicar plantilla rápida al formulario
+  const usarPlantillaRapida = (plantilla) => {
+    setNombreEjercicio(plantilla.nombre_ejercicio);
+    const nuevosSets = [];
+    const cantidadSets = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
+    for (let i = 0; i < cantidadSets; i++) {
+      nuevosSets.push({ setNum: i + 1, reps: '', peso: '', unidad: 'kg' });
+    }
+    setSetsDetalle(nuevosSets);
+  };
+
+  // Guardar en Logs
   const guardarOActualizarEjercicio = async (e) => {
     e.preventDefault();
     if (!nombreEjercicio) return;
     setGuardando(true);
     
     const fechaAInsertar = `${fechaEntreno}T12:00:00.000Z`;
-    const datosFormulario = {
-      created_at: fechaAInsertar,
-      tipo_dia: rutinaActual,
-      nombre_ejercicio: nombreEjercicio,
-      sets_realizados: setsDetalle,
-      notas: notas
-    };
+    const datosFormulario = { created_at: fechaAInsertar, tipo_dia: rutinaActual, nombre_ejercicio: nombreEjercicio, sets_realizados: setsDetalle, notas: notas };
 
     if (idEditando) {
-      const { error } = await supabase.from('gym_logs').update(datosFormulario).eq('id', idEditando);
-      if (!error) {
-        setIdEditando(null);
-        resetForm();
-        cargarEjerciciosDia();
-      } else {
-        alert("Error al actualizar: " + error.message);
-      }
+      await supabase.from('gym_logs').update(datosFormulario).eq('id', idEditando);
     } else {
-      const { data, error } = await supabase.from('gym_logs').insert([datosFormulario]).select();
-      if (!error && data) {
-        setEjercicios([data[0], ...ejercicios]);
-        resetForm();
-      } else {
-        alert("Error al guardar: " + error?.message);
-      }
+      await supabase.from('gym_logs').insert([datosFormulario]);
     }
+    
+    setIdEditando(null);
+    resetForm();
+    cargarEjerciciosDia();
+    cargarListaNombresEjercicios(); // Refresca el autocompletado
     setGuardando(false);
   };
 
@@ -157,33 +151,52 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const cancelarEdicion = () => {
-    setIdEditando(null);
-    resetForm();
-  };
-
   const eliminarEjercicio = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm("¿Estás seguro de eliminar este registro?")) return;
+    if (!window.confirm("¿Eliminar este registro de entrenamiento?")) return;
+    await supabase.from('gym_logs').delete().eq('id', id);
+    setEjercicios(ejercicios.filter(ej => ej.id !== id));
+    if (idEditando === id) resetForm();
+  };
 
-    const { error } = await supabase.from('gym_logs').delete().eq('id', id);
-    if (!error) {
-      setEjercicios(ejercicios.filter(ej => ej.id !== id));
-      if (idEditando === id) cancelarEdicion();
+  // Guardar nueva Rutina (Plantilla)
+  const agregarPlantilla = async (e) => {
+    e.preventDefault();
+    if (!nuevaPlantilla.ejercicio) return;
+    
+    const nuevaData = {
+      tipo_dia: nuevaPlantilla.rutina,
+      nombre_ejercicio: nuevaPlantilla.ejercicio,
+      meta_sets: parseInt(nuevaPlantilla.metaSets) || 0,
+      meta_reps: nuevaPlantilla.metaReps
+    };
+
+    const { data, error } = await supabase.from('gym_rutinas').insert([nuevaData]).select();
+    if (!error && data) {
+      setPlantillas([...plantillas, data[0]]);
+      setNuevaPlantilla({ ...nuevaPlantilla, ejercicio: '', metaSets: 3, metaReps: '' });
+      cargarListaNombresEjercicios();
     }
   };
 
-  const agregarPlantilla = (e) => {
-    e.preventDefault();
-    if (!nuevaPlantilla.ejercicio) return;
-    setPlantillas([...plantillas, nuevaPlantilla]);
-    setNuevaPlantilla({ rutina: rutinaActual, ejercicio: '', metaSets: 3, metaReps: '' });
+  const eliminarPlantilla = async (id) => {
+    if (!window.confirm("¿Eliminar este ejercicio de tu rutina planificada?")) return;
+    await supabase.from('gym_rutinas').delete().eq('id', id);
+    setPlantillas(plantillas.filter(p => p.id !== id));
   };
+
+  // Filtra los ejercicios planeados para el día actual seleccionado
+  const ejerciciosPlaneadosHoy = plantillas.filter(p => p.tipo_dia === rutinaActual);
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 p-4 font-sans pb-28 selection:bg-red-900 selection:text-white">
+      
+      {/* DATALIST: El "Cerebro" invisible del autocompletado */}
+      <datalist id="memoria-ejercicios">
+        {listaEjerciciosHistorico.map(ej => <option key={ej} value={ej} />)}
+      </datalist>
+
       <div className="max-w-md mx-auto">
-        
         {/* Encabezado Espartano */}
         <div className="flex items-center justify-center gap-3 mb-6 mt-2">
           <div className="w-12 h-12 bg-gradient-to-br from-red-700 to-red-950 rounded-none flex items-center justify-center border-2 border-red-800 shadow-[0_0_15px_rgba(220,38,38,0.4)]">
@@ -201,36 +214,18 @@ export default function App() {
           <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Monk Killer</h1>
         </div>
 
-        {/* Navegación (3 Pestañas) */}
+        {/* Navegación */}
         <div className="flex bg-zinc-900 p-1 rounded-sm mb-6 border border-zinc-800">
-          <button 
-            onClick={() => setTabActiva('entrenar')}
-            className={`flex-1 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-all ${tabActiva === 'entrenar' ? 'bg-red-700 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Entrenar
-          </button>
-          <button 
-            onClick={() => setTabActiva('rutinas')}
-            className={`flex-1 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-all ${tabActiva === 'rutinas' ? 'bg-red-700 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Rutinas
-          </button>
-          <button 
-            onClick={() => setTabActiva('progreso')}
-            className={`flex-1 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-all ${tabActiva === 'progreso' ? 'bg-red-700 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Progreso
-          </button>
+          <button onClick={() => setTabActiva('entrenar')} className={`flex-1 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-all ${tabActiva === 'entrenar' ? 'bg-red-700 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>Entrenar</button>
+          <button onClick={() => setTabActiva('rutinas')} className={`flex-1 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-all ${tabActiva === 'rutinas' ? 'bg-red-700 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>Rutinas</button>
+          <button onClick={() => setTabActiva('progreso')} className={`flex-1 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-all ${tabActiva === 'progreso' ? 'bg-red-700 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>Progreso</button>
         </div>
 
-        {/* ================= PESTAÑA 1: ENTRENAR (Registro Real por Sets) ================= */}
+        {/* ================= PESTAÑA 1: ENTRENAR ================= */}
         {tabActiva === 'entrenar' && (
           <div className="animate-fade-in">
             <div className="bg-zinc-900 rounded-sm p-2 mb-6 border border-zinc-800">
-              <select 
-                value={rutinaActual} onChange={(e) => setRutinaActual(e.target.value)}
-                className="w-full bg-zinc-950 text-white font-bold rounded-sm p-3 outline-none focus:ring-1 focus:ring-red-600 appearance-none border border-zinc-800 uppercase tracking-widest text-center cursor-pointer"
-              >
+              <select value={rutinaActual} onChange={(e) => setRutinaActual(e.target.value)} className="w-full bg-zinc-950 text-white font-bold rounded-sm p-3 outline-none focus:ring-1 focus:ring-red-600 appearance-none border border-zinc-800 uppercase tracking-widest text-center cursor-pointer">
                 {tiposRutina.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
               </select>
             </div>
@@ -240,70 +235,69 @@ export default function App() {
               
               <div className="flex justify-between items-center mb-5 relative z-10">
                 <h2 className={`text-sm font-black uppercase tracking-widest border-l-4 pl-2 ${idEditando ? 'text-amber-500 border-amber-600' : 'text-red-500 border-red-600'}`}>
-                  {idEditando ? 'Editando Ejercicio' : 'Registrar Serie Real'}
+                  {idEditando ? 'Editando Ejercicio' : 'Registrar Serie'}
                 </h2>
-                <input type="date" 
-                  className="bg-black border border-zinc-700 text-zinc-400 text-xs rounded-sm p-1.5 outline-none focus:border-red-600 cursor-pointer"
-                  value={fechaEntreno} onChange={(e) => setFechaEntreno(e.target.value)}
-                />
+                <input type="date" className="bg-black border border-zinc-700 text-zinc-400 text-xs rounded-sm p-1.5 outline-none focus:border-red-600 cursor-pointer" value={fechaEntreno} onChange={(e) => setFechaEntreno(e.target.value)} />
               </div>
               
               <div className="relative z-10">
-                <input type="text" placeholder="Ejercicio (ej. Press Militar)" 
+                
+                {/* Botones rápidos basados en la rutina */}
+                {!idEditando && ejerciciosPlaneadosHoy.length > 0 && (
+                  <div className="mb-4">
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Toca para cargar plan</span>
+                    <div className="flex flex-wrap gap-2">
+                      {ejerciciosPlaneadosHoy.map(p => (
+                        <button key={p.id} type="button" onClick={() => usarPlantillaRapida(p)}
+                          className="text-xs bg-zinc-950 border border-zinc-700 text-zinc-300 px-3 py-1.5 rounded-sm hover:bg-red-900 hover:border-red-700 transition-colors font-bold uppercase">
+                          {p.nombre_ejercicio}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Input con Autocompletado */}
+                <input type="text" list="memoria-ejercicios" placeholder="Ejercicio (escribe para buscar...)" 
                   className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded-sm text-white placeholder-zinc-600 focus:ring-1 focus:ring-red-600 outline-none transition-all font-medium" required
                   value={nombreEjercicio} onChange={(e) => setNombreEjercicio(e.target.value)}
                 />
 
-                {/* Dinámica de Sets Múltiples */}
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Desglose por Set</span>
-                    <button type="button" onClick={agregarFilaSet} className="text-xs text-red-500 font-bold hover:text-red-400">
-                      + Añadir Set
-                    </button>
+                    <button type="button" onClick={agregarFilaSet} className="text-xs text-red-500 font-bold hover:text-red-400">+ Añadir Set</button>
                   </div>
 
                   <div className="space-y-2">
                     {setsDetalle.map((setObj, index) => (
                       <div key={index} className="flex items-center gap-2 bg-black p-2 border border-zinc-800 rounded-sm">
                         <span className="text-xs font-black text-zinc-500 w-12 text-center">Set {setObj.setNum}</span>
-                        <input type="number" placeholder="Reps" 
-                          className="w-full bg-zinc-900 border border-zinc-800 text-white text-center p-2 rounded-sm text-sm outline-none font-bold"
-                          value={setObj.reps} onChange={(e) => actualizarFilaSet(index, 'reps', e.target.value)} required 
-                        />
-                        <input type="number" step="0.1" placeholder="Peso" 
-                          className="w-full bg-zinc-900 border border-zinc-800 text-white text-center p-2 rounded-sm text-sm outline-none font-bold"
-                          value={setObj.peso} onChange={(e) => actualizarFilaSet(index, 'peso', e.target.value)} required 
-                        />
-                        <select className="bg-zinc-900 text-red-500 text-xs p-2 font-black border border-zinc-800 rounded-sm outline-none"
+                        <input type="number" placeholder="Reps" className="w-full bg-zinc-900 border border-zinc-800 text-white text-center p-2 rounded-sm text-sm outline-none font-bold focus:border-red-600"
+                          value={setObj.reps} onChange={(e) => actualizarFilaSet(index, 'reps', e.target.value)} required />
+                        <input type="number" step="0.1" placeholder="Peso" className="w-full bg-zinc-900 border border-zinc-800 text-white text-center p-2 rounded-sm text-sm outline-none font-bold focus:border-red-600"
+                          value={setObj.peso} onChange={(e) => actualizarFilaSet(index, 'peso', e.target.value)} required />
+                        <select className="bg-zinc-900 text-red-500 text-xs p-2 font-black border border-zinc-800 rounded-sm outline-none cursor-pointer"
                           value={setObj.unidad} onChange={(e) => actualizarFilaSet(index, 'unidad', e.target.value)}>
                           <option value="kg">kg</option>
                           <option value="lbs">lbs</option>
                         </select>
-                        <button type="button" onClick={() => eliminarFilaSet(index)} className="text-zinc-600 hover:text-red-500 p-1">
-                          ✕
-                        </button>
+                        <button type="button" onClick={() => eliminarFilaSet(index)} className="text-zinc-600 hover:text-red-500 p-1">✕</button>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <textarea placeholder="Notas (fallo muscular, técnica...)" 
-                  className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-zinc-300 placeholder-zinc-600 focus:ring-1 focus:ring-red-600 outline-none transition-all mb-5 text-sm resize-none" rows="2"
-                  value={notas} onChange={(e) => setNotas(e.target.value)}
-                />
+                <textarea placeholder="Notas (fallo muscular, técnica...)" className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-zinc-300 placeholder-zinc-600 focus:ring-1 focus:ring-red-600 outline-none transition-all mb-5 text-sm resize-none" rows="2"
+                  value={notas} onChange={(e) => setNotas(e.target.value)} />
 
                 <div className="flex gap-2">
                   <button type="submit" disabled={guardando} 
-                    className={`w-full font-black uppercase tracking-widest py-4 px-4 rounded-sm transition-all active:scale-95 disabled:opacity-50 border ${idEditando ? 'bg-amber-600 hover:bg-amber-500 border-amber-500 text-black shadow-[0_0_20px_rgba(217,119,6,0.3)]' : 'bg-red-700 hover:bg-red-600 border-red-600 text-white shadow-[0_0_20px_rgba(185,28,28,0.3)]'}`}>
-                    {guardando ? 'Guardando...' : (idEditando ? 'Actualizar Ejercicio' : 'Registrar Serie')}
+                    className={`w-full font-black uppercase tracking-widest py-4 px-4 rounded-sm transition-all active:scale-95 disabled:opacity-50 border ${idEditando ? 'bg-amber-600 hover:bg-amber-500 border-amber-500 text-black' : 'bg-red-700 hover:bg-red-600 border-red-600 text-white shadow-[0_0_20px_rgba(185,28,28,0.3)]'}`}>
+                    {guardando ? 'Guardando...' : (idEditando ? 'Actualizar' : 'Registrar')}
                   </button>
-
                   {idEditando && (
-                    <button type="button" onClick={cancelarEdicion} 
-                      className="bg-zinc-800 text-zinc-300 font-bold px-4 rounded-sm border border-zinc-700 hover:bg-zinc-700 text-xs uppercase">
-                      Cancelar
-                    </button>
+                    <button type="button" onClick={() => {setIdEditando(null); resetForm();}} className="bg-zinc-800 text-zinc-300 font-bold px-4 rounded-sm border border-zinc-700 hover:bg-zinc-700 text-xs uppercase">Cancelar</button>
                   )}
                 </div>
               </div>
@@ -312,125 +306,76 @@ export default function App() {
             <div>
               <div className="flex justify-between items-center mb-4 ml-1">
                 <h2 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Historial • {rutinaActual}</h2>
-                <span className="text-[10px] text-zinc-600 italic">Toca una tarjeta para editarla</span>
               </div>
-
-              {ejercicios.length === 0 ? (
-                <div className="bg-zinc-900/50 border border-zinc-800 border-dashed rounded-sm p-8 text-center">
-                  <p className="text-zinc-600 text-sm font-medium">No hay registros para este día.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {ejercicios.map((ej) => (
-                    <div 
-                      key={ej.id} 
-                      onClick={() => prepararEdicion(ej)}
-                      className={`bg-zinc-900 border rounded-sm p-4 transition-all cursor-pointer relative group ${idEditando === ej.id ? 'border-amber-600 bg-amber-950/10' : 'border-zinc-800 hover:border-red-900/50'}`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <div className="font-bold text-zinc-100 text-lg uppercase tracking-wide flex items-center gap-2">
-                            {ej.nombre_ejercicio}
-                            {idEditando === ej.id && <span className="text-[10px] bg-amber-600 text-black px-1.5 py-0.5 font-black uppercase">Editando</span>}
-                          </div>
-                          <div className="text-xs text-red-600/80 font-bold mt-0.5 tracking-wider">{new Date(ej.created_at).toLocaleDateString('es-CL')}</div>
-                        </div>
-
-                        <button 
-                          onClick={(e) => eliminarEjercicio(ej.id, e)}
-                          className="text-zinc-600 hover:text-red-500 p-1.5 transition-colors"
-                          title="Eliminar registro"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+              <div className="space-y-3">
+                {ejercicios.map((ej) => (
+                  <div key={ej.id} onClick={() => prepararEdicion(ej)} className="bg-zinc-900 border border-zinc-800 rounded-sm p-4 cursor-pointer hover:border-red-900/50">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-bold text-zinc-100 text-lg uppercase tracking-wide">{ej.nombre_ejercicio}</div>
+                        <div className="text-xs text-red-600/80 font-bold mt-0.5 tracking-wider">{new Date(ej.created_at).toLocaleDateString('es-CL')}</div>
                       </div>
-
-                      {/* Desglose visual de sets guardados */}
-                      <div className="grid grid-cols-2 gap-2 mt-3">
-                        {ej.sets_realizados && ej.sets_realizados.map((s, idx) => (
-                          <div key={idx} className="bg-black border border-zinc-800 p-2 rounded-sm text-xs flex justify-between items-center">
-                            <span className="text-zinc-500 font-bold">Set {s.setNum}</span>
-                            <span className="text-white font-black">{s.reps} reps @ {s.peso} {s.unidad}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {ej.notas && (
-                        <div className="text-xs text-zinc-400 bg-black/50 p-3 rounded-sm border-l-4 border-red-700 mt-3 italic">
-                          "{ej.notas}"
-                        </div>
-                      )}
+                      <button onClick={(e) => eliminarEjercicio(ej.id, e)} className="text-zinc-600 hover:text-red-500">✕</button>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {ej.sets_realizados && ej.sets_realizados.map((s, idx) => (
+                        <div key={idx} className="bg-black border border-zinc-800 p-2 rounded-sm text-xs flex justify-between">
+                          <span className="text-zinc-500 font-bold">Set {s.setNum}</span>
+                          <span className="text-white font-black">{s.reps} reps @ {s.peso}{s.unidad}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* ================= PESTAÑA 2: RUTINAS (Planificación) ================= */}
+        {/* ================= PESTAÑA 2: RUTINAS ================= */}
         {tabActiva === 'rutinas' && (
           <div className="animate-fade-in">
             <div className="bg-zinc-900 p-5 rounded-sm border border-zinc-800 mb-6">
-              <h2 className="text-sm font-black text-red-500 uppercase tracking-widest mb-4 border-l-4 border-red-600 pl-2">Estructura de Rutinas</h2>
+              <h2 className="text-sm font-black text-red-500 uppercase tracking-widest mb-4 border-l-4 border-red-600 pl-2">Crear Plantilla</h2>
               
               <form onSubmit={agregarPlantilla} className="space-y-4 mb-6">
                 <div>
-                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Día de Rutina</span>
-                  <select 
-                    value={nuevaPlantilla.rutina} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, rutina: e.target.value})}
-                    className="w-full bg-black text-white font-bold rounded-sm p-3 outline-none border border-zinc-700 uppercase tracking-wider text-sm cursor-pointer"
-                  >
+                  <select value={nuevaPlantilla.rutina} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, rutina: e.target.value})} className="w-full bg-black text-white font-bold rounded-sm p-3 outline-none border border-zinc-700 uppercase tracking-wider text-sm cursor-pointer focus:border-red-600">
                     {tiposRutina.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
                   </select>
                 </div>
-
                 <div>
-                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Ejercicio Planificado</span>
-                  <input type="text" placeholder="Ej. Press Inclinado con Mancuernas" 
-                    className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white placeholder-zinc-600 focus:border-red-600 outline-none text-sm font-medium" required
-                    value={nuevaPlantilla.ejercicio} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, ejercicio: e.target.value})}
-                  />
+                  {/* Autocompletado también funciona aquí */}
+                  <input type="text" list="memoria-ejercicios" placeholder="Ej. Press Militar" className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white placeholder-zinc-600 focus:border-red-600 outline-none text-sm font-medium" required value={nuevaPlantilla.ejercicio} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, ejercicio: e.target.value})} />
                 </div>
-
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Meta Sets</span>
-                    <input type="number" placeholder="3" 
-                      className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white text-center outline-none font-bold text-sm"
-                      value={nuevaPlantilla.metaSets} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, metaSets: e.target.value})}
-                    />
+                    <input type="number" placeholder="3" className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white text-center outline-none font-bold text-sm focus:border-red-600" value={nuevaPlantilla.metaSets} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, metaSets: e.target.value})} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Meta Reps (Rango)</span>
-                    <input type="text" placeholder="8 - 10" 
-                      className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white text-center outline-none font-bold text-sm"
-                      value={nuevaPlantilla.metaReps} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, metaReps: e.target.value})}
-                    />
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Reps Esperadas</span>
+                    <input type="text" placeholder="8 - 10" className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white text-center outline-none font-bold text-sm focus:border-red-600" value={nuevaPlantilla.metaReps} onChange={(e) => setNuevaPlantilla({...nuevaPlantilla, metaReps: e.target.value})} />
                   </div>
                 </div>
-
-                <button type="submit" 
-                  className="w-full bg-red-700 text-white font-black uppercase tracking-widest py-3 rounded-sm shadow-lg hover:bg-red-600 transition-all border border-red-600">
-                  Añadir a Plantilla
-                </button>
+                <button type="submit" className="w-full bg-red-700 text-white font-black uppercase tracking-widest py-3 rounded-sm shadow-[0_0_15px_rgba(185,28,28,0.3)] hover:bg-red-600 transition-all border border-red-600 active:scale-95">Añadir a Plantilla</button>
               </form>
 
-              {/* Listado de Rutinas Planeadas */}
               <div className="space-y-4">
                 {tiposRutina.map(tipo => {
-                  const ejerciciosTipo = plantillas.filter(p => p.rutina === tipo);
+                  const ejerciciosTipo = plantillas.filter(p => p.tipo_dia === tipo);
                   if (ejerciciosTipo.length === 0) return null;
                   return (
                     <div key={tipo} className="bg-black border border-zinc-800 p-4 rounded-sm">
-                      <h3 className="text-xs font-black text-red-500 uppercase tracking-widest mb-2 border-b border-zinc-800 pb-1">{tipo}</h3>
-                      <div className="space-y-2">
-                        {ejerciciosTipo.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-sm py-1">
-                            <span className="text-zinc-200 font-medium">{item.ejercicio}</span>
-                            <span className="text-zinc-500 text-xs font-bold">{item.metaSets} sets • {item.metaReps} reps</span>
+                      <h3 className="text-xs font-black text-red-500 uppercase tracking-widest mb-3 border-b border-zinc-800 pb-2">{tipo}</h3>
+                      <div className="space-y-3">
+                        {ejerciciosTipo.map(item => (
+                          <div key={item.id} className="flex justify-between items-center text-sm bg-zinc-900 p-2 rounded-sm border border-zinc-800/50">
+                            <div>
+                              <div className="text-zinc-200 font-bold uppercase">{item.nombre_ejercicio}</div>
+                              <div className="text-zinc-500 text-[10px] font-black uppercase tracking-wider mt-0.5">{item.meta_sets} sets • {item.meta_reps} reps</div>
+                            </div>
+                            <button onClick={() => eliminarPlantilla(item.id)} className="text-zinc-600 hover:text-red-500 font-bold p-2">✕</button>
                           </div>
                         ))}
                       </div>
@@ -442,7 +387,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= PESTAÑA 3: PROGRESO (Gráfico) ================= */}
+        {/* ================= PESTAÑA 3: PROGRESO ================= */}
         {tabActiva === 'progreso' && (
           <div className="animate-fade-in">
             <div className="bg-zinc-900 p-5 rounded-sm border border-zinc-800 mb-6">
@@ -452,10 +397,7 @@ export default function App() {
                 <p className="text-zinc-500 text-sm italic">Registra ejercicios para ver tu progreso aquí.</p>
               ) : (
                 <>
-                  <select 
-                    value={ejercicioFiltro} onChange={(e) => setEjercicioFiltro(e.target.value)}
-                    className="w-full bg-black text-white font-bold rounded-sm p-3 outline-none border border-zinc-700 uppercase tracking-wider text-sm mb-6 focus:border-red-600 cursor-pointer"
-                  >
+                  <select value={ejercicioFiltro} onChange={(e) => setEjercicioFiltro(e.target.value)} className="w-full bg-black text-white font-bold rounded-sm p-3 outline-none border border-zinc-700 uppercase tracking-wider text-sm mb-6 focus:border-red-600 cursor-pointer">
                     {listaEjerciciosHistorico.map(ej => <option key={ej} value={ej}>{ej}</option>)}
                   </select>
 
@@ -465,10 +407,7 @@ export default function App() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                         <XAxis dataKey="fecha" stroke="#52525b" fontSize={10} tickMargin={10} />
                         <YAxis stroke="#52525b" fontSize={10} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#09090b', borderColor: '#7f1d1d', borderRadius: '2px', color: '#fff', fontWeight: 'bold' }}
-                          itemStyle={{ color: '#ef4444' }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: '#09090b', borderColor: '#7f1d1d', borderRadius: '2px', color: '#fff', fontWeight: 'bold' }} itemStyle={{ color: '#ef4444' }} />
                         <Line type="monotone" dataKey="peso" name="Peso Max" stroke="#dc2626" strokeWidth={3} dot={{ r: 4, fill: '#dc2626', stroke: '#000', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ef4444' }} />
                       </LineChart>
                     </ResponsiveContainer>
