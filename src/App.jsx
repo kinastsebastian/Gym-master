@@ -95,12 +95,12 @@ export default function App() {
 
     const { data, error } = await supabase.from('gym_logs').insert([ejercicioAGuardar]).select();
 
-    if (!error && data) {
+    if (error) {
+      alert("Error de Supabase: " + error.message);
+    } else if (data) {
       setEjercicios([data[0], ...ejercicios]);
       setNuevoEjercicio({ ...nuevoEjercicio, nombre: '', sets: '', reps: '', peso: '', notas: '' });
     }
-    setGuardando(false);
-  };
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 p-4 font-sans pb-28 selection:bg-red-900 selection:text-white">
