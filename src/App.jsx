@@ -101,6 +101,8 @@ export default function App() {
       setEjercicios([data[0], ...ejercicios]);
       setNuevoEjercicio({ ...nuevoEjercicio, nombre: '', sets: '', reps: '', peso: '', notas: '' });
     }
+    setGuardando(false);
+  };
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 p-4 font-sans pb-28 selection:bg-red-900 selection:text-white">
@@ -122,7 +124,6 @@ export default function App() {
           </div>
           <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Monk Killer</h1>
         </div>
-        
 
         {/* Navegación (Pestañas cuadradas) */}
         <div className="flex bg-zinc-900 p-1 rounded-sm mb-6 border border-zinc-800">
