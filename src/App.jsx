@@ -23,11 +23,7 @@ export default function App() {
   const tiposRutina = ['Full Body', 'Upper Body', 'Lower Body', 'Arms/Delts'];
 
   // Pestaña Rutinas (Plantillas / Planificación)
-  const [plantillas, setPlantillas] = useState([
-    { rutina: 'Full Body', ejercicio: 'Press de Banca', metaSets: 3, metaReps: '8-10' },
-    { rutina: 'Full Body', ejercicio: 'Sentadilla', metaSets: 3, metaReps: '6-8' },
-    { rutina: 'Upper Body', ejercicio: 'Dominadas', metaSets: 3, metaReps: 'Al fallo' }
-  ]);
+  const [plantillas, setPlantillas] = useState([]);
   const [nuevaPlantilla, setNuevaPlantilla] = useState({ rutina: 'Full Body', ejercicio: '', metaSets: 3, metaReps: '' });
 
   // Pestaña Progreso
