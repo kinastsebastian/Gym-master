@@ -9,6 +9,9 @@ export default function App() {
   const [ejercicios, setEjercicios] = useState([]);
   const [guardando, setGuardando] = useState(false);
   
+  // Control de Edición
+  const [idEditando, setIdEditando] = useState(null);
+
   const hoy = new Date().toISOString().split('T')[0];
   const [nuevoEjercicio, setNuevoEjercicio] = useState({
     nombre: '', sets: '', reps: '', peso: '', unidad: 'kg', notas: '', fecha: hoy
@@ -76,13 +79,13 @@ export default function App() {
     }
   };
 
-  const agregarEjercicio = async (e) => {
+  const guardarOActualizarEjercicio = async (e) => {
     e.preventDefault();
     if (!nuevoEjercicio.nombre) return;
     setGuardando(true);
     
     const fechaAInsertar = `${nuevoEjercicio.fecha}T12:00:00.000Z`;
-    const ejercicioAGuardar = {
+    const datosFormulario = {
       created_at: fechaAInsertar,
       tipo_dia: rutinaActual,
       nombre_ejercicio: nuevoEjercicio.nombre,
@@ -93,22 +96,72 @@ export default function App() {
       notas: nuevoEjercicio.notas
     };
 
-    const { data, error } = await supabase.from('gym_logs').insert([ejercicioAGuardar]).select();
+    if (idEditando) {
+      // MODO EDICIÓN: Actualizar el registro existente
+      const { error } = await supabase
+        .from('gym_logs')
+        .update(datosFormulario)
+        .eq('id', idEditando);
 
-    if (error) {
-      alert("Error de Supabase: " + error.message);
-    } else if (data) {
-      setEjercicios([data[0], ...ejercicios]);
-      setNuevoEjercicio({ ...nuevoEjercicio, nombre: '', sets: '', reps: '', peso: '', notas: '' });
+      if (error) {
+        alert("Error al actualizar: " + error.message);
+      } else {
+        setIdEditando(null);
+        setNuevoEjercicio({ nombre: '', sets: '', reps: '', peso: '', unidad: 'kg', notas: '', fecha: hoy });
+        cargarEjerciciosDia();
+      }
+    } else {
+      // MODO CREACIÓN: Insertar nuevo registro
+      const { data, error } = await supabase.from('gym_logs').insert([datosFormulario]).select();
+
+      if (error) {
+        alert("Error de Supabase: " + error.message);
+      } else if (data) {
+        setEjercicios([data[0], ...ejercicios]);
+        setNuevoEjercicio({ ...nuevoEjercicio, nombre: '', sets: '', reps: '', peso: '', notas: '' });
+      }
     }
     setGuardando(false);
+  };
+
+  const prepararEdicion = (ej) => {
+    setIdEditando(ej.id);
+    const fechaFormateada = ej.created_at ? ej.created_at.split('T')[0] : hoy;
+    setNuevoEjercicio({
+      nombre: ej.nombre_ejercicio,
+      sets: ej.sets,
+      reps: ej.reps,
+      peso: ej.peso,
+      unidad: ej.unidad || 'kg',
+      notas: ej.notas || '',
+      fecha: fechaFormateada
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Sube la pantalla al formulario
+  };
+
+  const cancelarEdicion = () => {
+    setIdEditando(null);
+    setNuevoEjercicio({ nombre: '', sets: '', reps: '', peso: '', unidad: 'kg', notas: '', fecha: hoy });
+  };
+
+  const eliminarEjercicio = async (id, e) => {
+    e.stopPropagation(); // Evita que se active la edición al hacer clic en el basurero
+    if (!window.confirm("¿Estás seguro de eliminar este registro?")) return;
+
+    const { error } = await supabase.from('gym_logs').delete().eq('id', id);
+    if (!error) {
+      setEjercicios(ejercicios.filter(ej => ej.id !== id));
+      if (idEditando === id) cancelarEdicion();
+    } else {
+      alert("Error al eliminar: " + error.message);
+    }
   };
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 p-4 font-sans pb-28 selection:bg-red-900 selection:text-white">
       <div className="max-w-md mx-auto">
         
-        {/* Encabezado Espartano (Bordes afilados y Espadas Cruzadas) */}
+        {/* Encabezado Espartano */}
         <div className="flex items-center justify-center gap-3 mb-6 mt-2">
           <div className="w-12 h-12 bg-gradient-to-br from-red-700 to-red-950 rounded-none flex items-center justify-center border-2 border-red-800 shadow-[0_0_15px_rgba(220,38,38,0.4)]">
             <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -153,11 +206,13 @@ export default function App() {
               </select>
             </div>
 
-            <form onSubmit={agregarEjercicio} className="bg-zinc-900 p-5 rounded-sm mb-8 border border-zinc-800 shadow-2xl relative overflow-hidden">
+            <form onSubmit={guardarOActualizarEjercicio} className={`bg-zinc-900 p-5 rounded-sm mb-8 border transition-all shadow-2xl relative overflow-hidden ${idEditando ? 'border-amber-600 shadow-[0_0_15px_rgba(217,119,6,0.2)]' : 'border-zinc-800'}`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-red-900/10 blur-3xl"></div>
               
               <div className="flex justify-between items-center mb-5 relative z-10">
-                <h2 className="text-sm font-black text-red-500 uppercase tracking-widest border-l-4 border-red-600 pl-2">Nuevo Set</h2>
+                <h2 className={`text-sm font-black uppercase tracking-widest border-l-4 pl-2 ${idEditando ? 'text-amber-500 border-amber-600' : 'text-red-500 border-red-600'}`}>
+                  {idEditando ? 'Editando Set' : 'Nuevo Set'}
+                </h2>
                 <input type="date" 
                   className="bg-black border border-zinc-700 text-zinc-400 text-xs rounded-sm p-1.5 outline-none focus:border-red-600 cursor-pointer"
                   value={nuevoEjercicio.fecha} onChange={(e) => setNuevoEjercicio({...nuevoEjercicio, fecha: e.target.value})}
@@ -200,15 +255,28 @@ export default function App() {
                   value={nuevoEjercicio.notas} onChange={(e) => setNuevoEjercicio({...nuevoEjercicio, notas: e.target.value})}
                 />
 
-                <button type="submit" disabled={guardando} 
-                  className="w-full bg-red-700 text-white font-black uppercase tracking-widest py-4 px-4 rounded-sm shadow-[0_0_20px_rgba(185,28,28,0.3)] hover:bg-red-600 transition-all active:scale-95 disabled:opacity-50 border border-red-600">
-                  {guardando ? 'Forjando...' : 'Registrar'}
-                </button>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={guardando} 
+                    className={`w-full font-black uppercase tracking-widest py-4 px-4 rounded-sm transition-all active:scale-95 disabled:opacity-50 border ${idEditando ? 'bg-amber-600 hover:bg-amber-500 border-amber-500 text-black shadow-[0_0_20px_rgba(217,119,6,0.3)]' : 'bg-red-700 hover:bg-red-600 border-red-600 text-white shadow-[0_0_20px_rgba(185,28,28,0.3)]'}`}>
+                    {guardando ? 'Guardando...' : (idEditando ? 'Actualizar Set' : 'Registrar')}
+                  </button>
+
+                  {idEditando && (
+                    <button type="button" onClick={cancelarEdicion} 
+                      className="bg-zinc-800 text-zinc-300 font-bold px-4 rounded-sm border border-zinc-700 hover:bg-zinc-700 text-xs uppercase">
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </div>
             </form>
 
             <div>
-              <h2 className="text-xs font-black text-zinc-500 mb-4 uppercase tracking-widest ml-1">Historial • {rutinaActual}</h2>
+              <div className="flex justify-between items-center mb-4 ml-1">
+                <h2 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Historial • {rutinaActual}</h2>
+                <span className="text-[10px] text-zinc-600 italic">Toca una tarjeta para editarla</span>
+              </div>
+
               {ejercicios.length === 0 ? (
                 <div className="bg-zinc-900/50 border border-zinc-800 border-dashed rounded-sm p-8 text-center">
                   <p className="text-zinc-600 text-sm font-medium">No hay registros. Es hora de entrenar.</p>
@@ -216,21 +284,44 @@ export default function App() {
               ) : (
                 <div className="space-y-3">
                   {ejercicios.map((ej) => (
-                    <div key={ej.id} className="bg-zinc-900 border border-zinc-800 rounded-sm p-4 hover:border-red-900/50 transition-colors">
+                    <div 
+                      key={ej.id} 
+                      onClick={() => prepararEdicion(ej)}
+                      className={`bg-zinc-900 border rounded-sm p-4 transition-all cursor-pointer relative group ${idEditando === ej.id ? 'border-amber-600 bg-amber-950/10' : 'border-zinc-800 hover:border-red-900/50'}`}
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <div className="font-bold text-zinc-100 text-lg uppercase tracking-wide">{ej.nombre_ejercicio}</div>
+                          <div className="font-bold text-zinc-100 text-lg uppercase tracking-wide flex items-center gap-2">
+                            {ej.nombre_ejercicio}
+                            {idEditando === ej.id && <span className="text-[10px] bg-amber-600 text-black px-1.5 py-0.5 font-black uppercase">Editando</span>}
+                          </div>
                           <div className="text-xs text-red-600/80 font-bold mt-0.5 tracking-wider">{new Date(ej.created_at).toLocaleDateString('es-CL')}</div>
                         </div>
-                        <span className="text-sm font-black text-white bg-red-800 px-3 py-1 rounded-sm shadow-md border border-red-700">
-                          {ej.peso} <span className="text-[10px] text-red-300">{ej.unidad}</span>
-                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-white bg-red-800 px-3 py-1 rounded-sm shadow-md border border-red-700">
+                            {ej.peso} <span className="text-[10px] text-red-300">{ej.unidad}</span>
+                          </span>
+                          
+                          {/* Botón de Eliminar */}
+                          <button 
+                            onClick={(e) => eliminarEjercicio(ej.id, e)}
+                            className="text-zinc-600 hover:text-red-500 p-1.5 transition-colors"
+                            title="Eliminar registro"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
+
                       <div className="text-sm text-zinc-400 font-bold mb-2 flex items-center gap-2 mt-3">
                         <span className="bg-black border border-zinc-800 px-2 py-1 rounded-sm">{ej.sets > 0 ? ej.sets : '-'} <span className="text-zinc-600 text-xs">SETS</span></span>
                         <span className="text-red-700">×</span>
                         <span className="bg-black border border-zinc-800 px-2 py-1 rounded-sm">{ej.reps > 0 ? ej.reps : '-'} <span className="text-zinc-600 text-xs">REPS</span></span>
                       </div>
+                      
                       {ej.notas && (
                         <div className="text-xs text-zinc-400 bg-black/50 p-3 rounded-sm border-l-4 border-red-700 mt-3 italic">
                           "{ej.notas}"
