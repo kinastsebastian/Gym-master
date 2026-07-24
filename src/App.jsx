@@ -190,6 +190,11 @@ export default function App() {
     window.scrollTo({ top: document.getElementById('form-registro').offsetTop - 15, behavior: 'smooth' });
   };
 
+  const cancelarEdicion = () => {
+    setIdEditando(null);
+    resetForm();
+  };
+
   const eliminarEjercicio = async (id, e) => {
     e.stopPropagation();
     if (!window.confirm("¿Eliminar este registro?")) return;
