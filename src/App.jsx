@@ -10,7 +10,12 @@ export default function App() {
   const [guardando, setGuardando] = useState(false);
   const [idEditando, setIdEditando] = useState(null);
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const obtenerFechaLocal = () => {
+    const fecha = new Date();
+    const ajusteHorario = new Date(fecha.getTime() - (fecha.getTimezoneOffset() * 60000));
+    return ajusteHorario.toISOString().split('T')[0];
+  };
+  const hoy = obtenerFechaLocal();
   
   const [nombreEjercicio, setNombreEjercicio] = useState('');
   const [fechaEntreno, setFechaEntreno] = useState(hoy);
