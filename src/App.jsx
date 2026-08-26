@@ -134,49 +134,79 @@ export default function App() {
 
   const usarPlantillaRapida = async (plantilla) => {
     setNombreEjercicio(plantilla.nombre_ejercicio);
-    setNotaAnterior('');
+    setNotaAnterior('Buscando historial en la nube...'); 
     setNotas('');
     
-    const { data } = await supabase.from('gym_logs').select('sets_realizados, notas').eq('nombre_ejercicio', plantilla.nombre_ejercicio).order('created_at', { ascending: false }).limit(1);
+    try {
+      const { data, error } = await supabase
+        .from('gym_logs')
+        .select('sets_realizados, notas')
+        .eq('nombre_ejercicio', plantilla.nombre_ejercicio)
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-    if (data && data.length > 0) {
-      const setsAnteriores = data[0].sets_realizados;
-      const nuevosSets = setsAnteriores.map(s => ({ setNum: s.setNum, reps: '', peso: s.peso, unidad: s.unidad }));
-      const cantidadSetsMeta = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
-      while (nuevosSets.length < cantidadSetsMeta) {
-        nuevosSets.push({ setNum: nuevosSets.length + 1, reps: '', peso: nuevosSets[nuevosSets.length - 1].peso, unidad: nuevosSets[nuevosSets.length - 1].unidad });
+      if (error) throw error; 
+
+      if (data && data.length > 0) {
+        const setsAnteriores = data[0].sets_realizados;
+        const nuevosSets = setsAnteriores.map(s => ({ setNum: s.setNum, reps: '', peso: s.peso, unidad: s.unidad }));
+        const cantidadSetsMeta = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
+        
+        while (nuevosSets.length < cantidadSetsMeta) {
+          nuevosSets.push({ setNum: nuevosSets.length + 1, reps: '', peso: nuevosSets[nuevosSets.length - 1].peso, unidad: nuevosSets[nuevosSets.length - 1].unidad });
+        }
+        
+        setSetsDetalle(nuevosSets);
+        setNotaAnterior(data[0].notas ? data[0].notas : 'Sin notas previas en este ejercicio.');
+      } else {
+        const nuevosSets = [];
+        const cantidadSets = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
+        for (let i = 0; i < cantidadSets; i++) nuevosSets.push({ setNum: i + 1, reps: '', peso: '', unidad: 'kg' });
+        setSetsDetalle(nuevosSets);
+        setNotaAnterior('Primera vez registrando este ejercicio.');
       }
-      setSetsDetalle(nuevosSets);
-      if (data[0].notas) setNotaAnterior(data[0].notas);
-    } else {
-      const nuevosSets = [];
-      const cantidadSets = plantilla.meta_sets > 0 ? plantilla.meta_sets : 1;
-      for (let i = 0; i < cantidadSets; i++) nuevosSets.push({ setNum: i + 1, reps: '', peso: '', unidad: 'kg' });
-      setSetsDetalle(nuevosSets);
+    } catch (err) {
+      console.error("Error de conexión:", err);
+      setNotaAnterior('Error de red. Toca "Cargar" nuevamente.');
     }
-    window.scrollTo({ top: document.getElementById('form-registro').offsetTop - 15, behavior: 'smooth' });
+
+    window.scrollTo({ top: document.getElementById('form-registro')?.offsetTop - 15, behavior: 'smooth' });
   };
 
   const guardarOActualizarEjercicio = async (e) => {
     e.preventDefault();
     if (!nombreEjercicio) return;
-    setGuardando(true);
-    const fechaAInsertar = `${fechaEntreno}T12:00:00.000Z`;
-    const datosFormulario = { created_at: fechaAInsertar, tipo_dia: rutinaActual, nombre_ejercicio: nombreEjercicio, sets_realizados: setsDetalle, notas: notas };
-
-    if (idEditando) {
-      await supabase.from('gym_logs').update(datosFormulario).eq('id', idEditando);
-    } else {
-      await supabase.from('gym_logs').insert([datosFormulario]);
-    }
     
-    setIdEditando(null);
-    resetForm();
-    cargarEjerciciosDia();
-    cargarListaNombresEjercicios();
-    setGuardando(false);
-  };
+    setGuardando(true);
+    
+    try {
+      const fechaAInsertar = `${fechaEntreno}T12:00:00.000Z`;
+      const datosFormulario = { created_at: fechaAInsertar, tipo_dia: rutinaActual, nombre_ejercicio: nombreEjercicio, sets_realizados: setsDetalle, notas: notas };
 
+      let errorGuardado;
+
+      if (idEditando) {
+        const { error } = await supabase.from('gym_logs').update(datosFormulario).eq('id', idEditando);
+        errorGuardado = error;
+      } else {
+        const { error } = await supabase.from('gym_logs').insert([datosFormulario]);
+        errorGuardado = error;
+      }
+      
+      if (errorGuardado) throw errorGuardado;
+
+      setIdEditando(null);
+      resetForm();
+      cargarEjerciciosDia();
+      cargarListaNombresEjercicios();
+      
+    } catch (err) {
+      console.error("Error al guardar:", err);
+      alert("Hubo un pequeño error de red, revisa si el ejercicio se guardó correctamente en la lista.");
+    } finally {
+      setGuardando(false);
+    }
+  };
   const resetForm = () => {
     setNombreEjercicio('');
     setSetsDetalle([{ setNum: 1, reps: '', peso: '', unidad: 'kg' }]);
