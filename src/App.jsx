@@ -433,6 +433,8 @@ export default function App() {
               ))}
             </div>
           </div>
+          </div>
+          )}
 
         {/* COMPACTO: PESTAÑA RUTINAS */}
         {tabActiva === 'rutinas' && (
