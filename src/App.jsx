@@ -82,12 +82,12 @@ export default function App() {
   };
 
   const cargarEjerciciosDia = async () => {
-    const { data } = await supabase.from('gym_logs').select('*').eq('tipo_dia', rutinaActual).order('orden', { ascending: true }).limit(30);
+    const { data } = await supabase.from('gym_logs').select('*').eq('tipo_dia', rutinaActual).order('created_at', { ascending: false }).limit(30);
     if (data) setEjercicios(data);
   };
 
   const cargarPlantillas = async () => {
-    const { data } = await supabase.from('gym_rutinas').select('*').order('created_at', { ascending: true });
+    const { data } = await supabase.from('gym_rutinas').select('*').order('orden', { ascending: true });
     if (data) setPlantillas(data);
   };
 
@@ -311,6 +311,50 @@ const moverEjercicio = async (indexActual, direccion, e) => {
     setPlantillas(plantillas.filter(p => p.id !== id));
   };
 
+  // --- FUNCIONES PARA EDITAR Y ORDENAR PLANTILLAS ---
+  const editarNombrePlantilla = async (item, e) => {
+    e.preventDefault();
+    const nuevoNombre = window.prompt("Ingresa el nuevo nombre:", item.nombre_ejercicio);
+    
+    if (!nuevoNombre || nuevoNombre.trim() === "" || nuevoNombre === item.nombre_ejercicio) return;
+
+    const { error } = await supabase
+      .from('gym_rutinas')
+      .update({ nombre_ejercicio: nuevoNombre.toUpperCase() })
+      .eq('id', item.id);
+
+    if (!error) cargarPlantillas(); // Actualiza la pantalla sin recargar
+  };
+
+  const moverPlantilla = async (ejerciciosGrupo, indexActual, direccion, e) => {
+    e.preventDefault();
+    const nuevoOrden = [...ejerciciosGrupo];
+    
+    // Cambiamos las posiciones según la flecha presionada
+    if (direccion === 'arriba' && indexActual > 0) {
+      const temp = nuevoOrden[indexActual];
+      nuevoOrden[indexActual] = nuevoOrden[indexActual - 1];
+      nuevoOrden[indexActual - 1] = temp;
+    } else if (direccion === 'abajo' && indexActual < nuevoOrden.length - 1) {
+      const temp = nuevoOrden[indexActual];
+      nuevoOrden[indexActual] = nuevoOrden[indexActual + 1];
+      nuevoOrden[indexActual + 1] = temp;
+    } else {
+      return; // Ya está en el límite
+    }
+
+    // Guardamos el nuevo orden en Supabase
+    for (let i = 0; i < nuevoOrden.length; i++) {
+      await supabase
+        .from('gym_rutinas')
+        .update({ orden: i })
+        .eq('id', nuevoOrden[i].id);
+    }
+    
+    cargarPlantillas(); // Actualiza la pantalla sin recargar
+  };
+  // ----------------------------------------------------
+
   const ejerciciosPlaneadosHoy = plantillas.filter(p => p.tipo_dia === rutinaActual);
 
   return (
@@ -504,7 +548,7 @@ const moverEjercicio = async (indexActual, direccion, e) => {
         </div>
       )}
 
-        {/* COMPACTO: PESTAÑA RUTINAS */}
+{/* COMPACTO: PESTAÑA RUTINAS */}
         {tabActiva === 'rutinas' && (
           <div className="animate-fade-in">
             <div className="bg-zinc-900 p-4 rounded-sm border border-zinc-800 mb-5">
@@ -528,13 +572,27 @@ const moverEjercicio = async (indexActual, direccion, e) => {
                     <div key={tipo} className="bg-black border border-zinc-800 p-3 rounded-sm">
                       <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 border-b border-zinc-800 pb-1.5 text-center">{tipo}</h3>
                       <div className="space-y-2">
-                        {ejerciciosTipo.map(item => (
+                        {/* Agregamos el 'index' para saber a quién mover */}
+                        {ejerciciosTipo.map((item, index) => (
                           <div key={item.id} className="flex justify-between items-center bg-zinc-900 p-1.5 rounded-sm border border-zinc-800/50">
+                            
+                            {/* BOTONES DE FLECHAS */}
+                            <div className="flex flex-col gap-1 mr-2 flex-shrink-0 justify-center">
+                              <button onClick={(e) => moverPlantilla(ejerciciosTipo, index, 'arriba', e)} className="text-[10px] text-zinc-500 hover:text-white leading-none px-1" title="Mover arriba">▲</button>
+                              <button onClick={(e) => moverPlantilla(ejerciciosTipo, index, 'abajo', e)} className="text-[10px] text-zinc-500 hover:text-white leading-none px-1" title="Mover abajo">▼</button>
+                            </div>
+
                             <div className="flex-1 text-center px-1">
                               <div className="text-zinc-200 font-bold uppercase text-xs break-words">{item.nombre_ejercicio}</div>
                               <div className="text-zinc-500 text-[9px] font-black uppercase tracking-wider mt-0.5">{item.meta_sets} sets • {item.meta_reps} reps</div>
                             </div>
-                            <button onClick={() => eliminarPlantilla(item.id)} className="text-zinc-600 hover:text-red-500 font-bold p-1 flex-shrink-0 ml-1 text-xs">✕</button>
+                            
+                            {/* BOTONES DE LÁPIZ Y ELIMINAR */}
+                            <div className="flex flex-shrink-0 items-center">
+                              <button onClick={(e) => editarNombrePlantilla(item, e)} className="text-zinc-500 hover:text-blue-400 text-xs px-2" title="Editar nombre">✏️</button>
+                              <button onClick={() => eliminarPlantilla(item.id)} className="text-zinc-600 hover:text-red-500 font-bold p-1 text-xs px-2">✕</button>
+                            </div>
+
                           </div>
                         ))}
                       </div>
