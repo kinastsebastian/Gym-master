@@ -466,9 +466,8 @@ export default function App() {
             </div>
           </div>
         </div>
-      </div>
     )}
-    
+
         {/* COMPACTO: PESTAÑA RUTINAS */}
         {tabActiva === 'rutinas' && (
           <div className="animate-fade-in">
