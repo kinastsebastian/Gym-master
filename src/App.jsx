@@ -250,6 +250,32 @@ export default function App() {
     }
   };
 
+  const editarNombreEjercicio = async (ejercicio, e) => {
+    e.preventDefault(); // Evita que la tarjeta se abra al hacer clic en el botón
+    
+    // Preguntamos el nuevo nombre mostrando el actual por defecto
+    const nuevoNombre = window.prompt("Ingresa el nuevo nombre:", ejercicio.nombre_ejercicio);
+    
+    // Si cancela, lo deja en blanco o pone el mismo nombre, no hacemos nada
+    if (!nuevoNombre || nuevoNombre.trim() === "" || nuevoNombre === ejercicio.nombre_ejercicio) return;
+
+    // Actualizamos en Supabase
+    const { error } = await supabase
+      .from('ejercicios') // <-- Asegúrate de que este sea el nombre de tu tabla
+      .update({ nombre_ejercicio: nuevoNombre.toUpperCase() })
+      .eq('id', ejercicio.id);
+
+    if (error) {
+      console.error("Error al actualizar:", error);
+      alert("Hubo un error al cambiar el nombre.");
+    } else {
+      // Si todo sale bien, recargamos la lista para ver el cambio
+      // Asumo que tu función para cargar los datos se llama cargarEjercicios o similar
+      // Reemplaza esto por la función que uses para traer los datos de la base de datos
+      window.location.reload(); 
+    }
+  };
+  
   const eliminarPlantilla = async (id) => {
     if (!window.confirm("¿Eliminar de tu rutina?")) return;
     await supabase.from('gym_rutinas').delete().eq('id', id);
