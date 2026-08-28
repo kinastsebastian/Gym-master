@@ -276,6 +276,35 @@ export default function App() {
     }
   };
 
+const moverEjercicio = async (indexActual, direccion, e) => {
+    e.preventDefault(); // Evita que se abra la tarjeta
+    
+    const nuevoOrden = [...ejercicios];
+    
+    // Intercambiar posiciones en el arreglo local
+    if (direccion === 'arriba' && indexActual > 0) {
+      const temp = nuevoOrden[indexActual];
+      nuevoOrden[indexActual] = nuevoOrden[indexActual - 1];
+      nuevoOrden[indexActual - 1] = temp;
+    } else if (direccion === 'abajo' && indexActual < nuevoOrden.length - 1) {
+      const temp = nuevoOrden[indexActual];
+      nuevoOrden[indexActual] = nuevoOrden[indexActual + 1];
+      nuevoOrden[indexActual + 1] = temp;
+    } else {
+      return; // Si ya está arriba del todo o abajo del todo, no hace nada
+    }
+
+    // Guardar el nuevo orden masivamente en Supabase
+    for (let i = 0; i < nuevoOrden.length; i++) {
+      await supabase
+        .from('ejercicios')
+        .update({ orden: i })
+        .eq('id', nuevoOrden[i].id);
+    }
+    
+    window.location.reload(); // Recargar para ver el cambio reflejado
+  };
+
   const eliminarPlantilla = async (id) => {
     if (!window.confirm("¿Eliminar de tu rutina?")) return;
     await supabase.from('gym_rutinas').delete().eq('id', id);
@@ -415,13 +444,20 @@ export default function App() {
               </div>
             </form>
 
-            {/* COMPACTO: HISTORIAL */}
+{/* COMPACTO: HISTORIAL */}
           <div>
             <h2 className="text-[11px] font-black text-zinc-500 uppercase tracking-widest mb-3 text-center">Historial • {rutinaActual}</h2>
             <div className="space-y-2">
-              {ejercicios.map((ej) => (
+              {ejercicios.map((ej, index) => (
                 <details key={ej.id} className="bg-zinc-900 border border-zinc-800 rounded-sm p-3 group">
                   <summary className="flex justify-between items-start cursor-pointer list-none focus:outline-none [&::-webkit-details-marker]:hidden">
+                    
+                    {/* NUEVAS FLECHAS PARA ORDENAR (PASO 2 INTEGRADO) */}
+                    <div className="flex flex-col gap-1 mr-2 flex-shrink-0 mt-0.5 justify-center">
+                      <button onClick={(e) => moverEjercicio(index, 'arriba', e)} className="text-[10px] text-zinc-500 hover:text-white leading-none px-1" title="Mover arriba">▲</button>
+                      <button onClick={(e) => moverEjercicio(index, 'abajo', e)} className="text-[10px] text-zinc-500 hover:text-white leading-none px-1" title="Mover abajo">▼</button>
+                    </div>
+
                     <div className="flex-1 text-center px-1">
                       <div className="font-bold text-zinc-100 text-sm uppercase tracking-wide break-words">
                         {ej.nombre_ejercicio}
@@ -432,7 +468,7 @@ export default function App() {
                       </div>
                     </div>
                     
-                    {/* AQUÍ ESTÁN LOS DOS BOTONES (LÁPIZ Y X) */}
+                    {/* BOTONES (LÁPIZ Y X) */}
                     <div className="flex flex-shrink-0 items-center">
                       <button onClick={(e) => editarNombreEjercicio(ej, e)} className="text-zinc-500 hover:text-blue-400 text-xs px-2" title="Editar nombre">
                         ✏️
@@ -466,7 +502,7 @@ export default function App() {
             </div>
           </div>
         </div>
-    )}
+      )}
 
         {/* COMPACTO: PESTAÑA RUTINAS */}
         {tabActiva === 'rutinas' && (
