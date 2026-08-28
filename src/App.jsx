@@ -275,7 +275,7 @@ export default function App() {
       window.location.reload(); 
     }
   };
-  
+
   const eliminarPlantilla = async (id) => {
     if (!window.confirm("¿Eliminar de tu rutina?")) return;
     await supabase.from('gym_rutinas').delete().eq('id', id);
@@ -425,15 +425,22 @@ export default function App() {
                     <div className="flex-1 text-center px-1">
                       <div className="font-bold text-zinc-100 text-sm uppercase tracking-wide break-words">
                         {ej.nombre_ejercicio}
-                        {/* Pequeña flecha que desaparece al abrir */}
                         <span className="text-[10px] text-zinc-600 ml-2 font-normal group-open:hidden">▼</span>
                       </div>
                       <div className="text-[9px] text-red-600/80 font-bold mt-0.5 tracking-wider uppercase">
                         {new Date(ej.created_at).toLocaleDateString('es-CL')}
                       </div>
                     </div>
-                    {/* Botón de eliminar original */}
-                    <button onClick={(e) => { e.preventDefault(); eliminarEjercicio(ej.id, e); }} className="text-zinc-600 hover:text-red-500 flex-shrink-0 ml-1 text-xs px-2">✕</button>
+                    
+                    {/* AQUÍ ESTÁN LOS DOS BOTONES (LÁPIZ Y X) */}
+                    <div className="flex flex-shrink-0 items-center">
+                      <button onClick={(e) => editarNombreEjercicio(ej, e)} className="text-zinc-500 hover:text-blue-400 text-xs px-2" title="Editar nombre">
+                        ✏️
+                      </button>
+                      <button onClick={(e) => { e.preventDefault(); eliminarEjercicio(ej.id, e); }} className="text-zinc-600 hover:text-red-500 text-xs px-2" title="Eliminar">
+                        ✕
+                      </button>
+                    </div>
                   </summary>
                   
                   {/* Todo esto queda oculto hasta hacer clic */}
@@ -447,7 +454,6 @@ export default function App() {
                       ))}
                     </div>
                     
-                    {/* Nuevo botón para editar sin que se confunda con expandir */}
                     <button 
                       onClick={(e) => { e.preventDefault(); prepararEdicion(ej); }} 
                       className="w-full mt-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] uppercase font-bold py-2 rounded-sm tracking-widest transition-colors"
@@ -459,9 +465,10 @@ export default function App() {
               ))}
             </div>
           </div>
-          </div>
-          )}
-
+        </div>
+      </div>
+    )}
+    
         {/* COMPACTO: PESTAÑA RUTINAS */}
         {tabActiva === 'rutinas' && (
           <div className="animate-fade-in">
