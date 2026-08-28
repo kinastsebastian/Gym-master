@@ -82,7 +82,7 @@ export default function App() {
   };
 
   const cargarEjerciciosDia = async () => {
-    const { data } = await supabase.from('gym_logs').select('*').eq('tipo_dia', rutinaActual).order('created_at', { ascending: false }).limit(30);
+    const { data } = await supabase.from('gym_logs').select('*').eq('tipo_dia', rutinaActual).order('orden', { ascending: true }).limit(30);
     if (data) setEjercicios(data);
   };
 
@@ -261,7 +261,7 @@ export default function App() {
 
     // Actualizamos en Supabase
     const { error } = await supabase
-      .from('ejercicios') // <-- Asegúrate de que este sea el nombre de tu tabla
+      .from('gym_logs') // <-- Asegúrate de que este sea el nombre de tu tabla
       .update({ nombre_ejercicio: nuevoNombre.toUpperCase() })
       .eq('id', ejercicio.id);
 
@@ -297,7 +297,7 @@ const moverEjercicio = async (indexActual, direccion, e) => {
     // Guardar el nuevo orden masivamente en Supabase
     for (let i = 0; i < nuevoOrden.length; i++) {
       await supabase
-        .from('ejercicios')
+        .from('gym_logs')
         .update({ orden: i })
         .eq('id', nuevoOrden[i].id);
     }
