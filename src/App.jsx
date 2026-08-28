@@ -27,7 +27,7 @@ export default function App() {
   const [timerActivo, setTimerActivo] = useState(false);
   const timerRef = useRef(null);
 
-  const tiposRutina = ['Full Body', 'Upper Body', 'Lower Body', 'Arms/Delts', 'Legs', 'Push', 'Pull'];
+  const tiposRutina = ['Full Body', 'Upper Body', 'Lower Body', 'Arms/Delts', 'Dia de Mejora'];
 
   const [plantillas, setPlantillas] = useState([]);
   const [nuevaPlantilla, setNuevaPlantilla] = useState({ rutina: 'Full Body', ejercicio: '', metaSets: 3, metaReps: '' });
