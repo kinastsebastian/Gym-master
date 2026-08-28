@@ -390,19 +390,29 @@ export default function App() {
             </form>
 
             {/* COMPACTO: HISTORIAL */}
-            <div>
-              <h2 className="text-[11px] font-black text-zinc-500 uppercase tracking-widest mb-3 text-center">Historial • {rutinaActual}</h2>
-              <div className="space-y-2">
-                {ejercicios.map((ej) => (
-                  <div key={ej.id} onClick={() => prepararEdicion(ej)} className="bg-zinc-900 border border-zinc-800 rounded-sm p-3 cursor-pointer hover:border-red-900/50">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1 text-center px-1">
-                        <div className="font-bold text-zinc-100 text-sm uppercase tracking-wide break-words">{ej.nombre_ejercicio}</div>
-                        <div className="text-[9px] text-red-600/80 font-bold mt-0.5 tracking-wider uppercase">{new Date(ej.created_at).toLocaleDateString('es-CL')}</div>
+          <div>
+            <h2 className="text-[11px] font-black text-zinc-500 uppercase tracking-widest mb-3 text-center">Historial • {rutinaActual}</h2>
+            <div className="space-y-2">
+              {ejercicios.map((ej) => (
+                <details key={ej.id} className="bg-zinc-900 border border-zinc-800 rounded-sm p-3 group">
+                  <summary className="flex justify-between items-start cursor-pointer list-none focus:outline-none [&::-webkit-details-marker]:hidden">
+                    <div className="flex-1 text-center px-1">
+                      <div className="font-bold text-zinc-100 text-sm uppercase tracking-wide break-words">
+                        {ej.nombre_ejercicio}
+                        {/* Pequeña flecha que desaparece al abrir */}
+                        <span className="text-[10px] text-zinc-600 ml-2 font-normal group-open:hidden">▼</span>
                       </div>
-                      <button onClick={(e) => eliminarEjercicio(ej.id, e)} className="text-zinc-600 hover:text-red-500 flex-shrink-0 ml-1 text-xs">✕</button>
+                      <div className="text-[9px] text-red-600/80 font-bold mt-0.5 tracking-wider uppercase">
+                        {new Date(ej.created_at).toLocaleDateString('es-CL')}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5 mt-2">
+                    {/* Botón de eliminar original */}
+                    <button onClick={(e) => { e.preventDefault(); eliminarEjercicio(ej.id, e); }} className="text-zinc-600 hover:text-red-500 flex-shrink-0 ml-1 text-xs px-2">✕</button>
+                  </summary>
+                  
+                  {/* Todo esto queda oculto hasta hacer clic */}
+                  <div className="mt-3 pt-3 border-t border-zinc-800">
+                    <div className="grid grid-cols-2 gap-1.5">
                       {ej.sets_realizados && ej.sets_realizados.map((s, idx) => (
                         <div key={idx} className="bg-black border border-zinc-800 p-1.5 rounded-sm flex justify-between items-center">
                           <span className="text-zinc-500 font-bold uppercase text-[9px]">S{s.setNum}</span>
@@ -410,12 +420,19 @@ export default function App() {
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Nuevo botón para editar sin que se confunda con expandir */}
+                    <button 
+                      onClick={(e) => { e.preventDefault(); prepararEdicion(ej); }} 
+                      className="w-full mt-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] uppercase font-bold py-2 rounded-sm tracking-widest transition-colors"
+                    >
+                      Editar este ejercicio
+                    </button>
                   </div>
-                ))}
-              </div>
+                </details>
+              ))}
             </div>
           </div>
-        )}
 
         {/* COMPACTO: PESTAÑA RUTINAS */}
         {tabActiva === 'rutinas' && (
