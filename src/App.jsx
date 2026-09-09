@@ -119,12 +119,24 @@ export default function App() {
   };
 
   const cargarEjerciciosDia = async () => {
-    const { data } = await supabase.from('gym_logs').select('*').eq('tipo_dia', rutinaActual).order('created_at', { ascending: false }).limit(30);
+    if (!session) return; // Seguridad: si no hay sesión, no hace nada
+    const { data } = await supabase
+      .from('gym_logs')
+      .select('*')
+      .eq('tipo_dia', rutinaActual)
+      .eq('user_id', session.user.id) // <-- EL FILTRO MÁGICO
+      .order('created_at', { ascending: false })
+      .limit(30);
     if (data) setEjercicios(data);
   };
 
   const cargarPlantillas = async () => {
-    const { data } = await supabase.from('gym_rutinas').select('*').order('orden', { ascending: true });
+    if (!session) return;
+    const { data } = await supabase
+      .from('gym_rutinas')
+      .select('*')
+      .eq('user_id', session.user.id) // <-- EL FILTRO MÁGICO
+      .order('orden', { ascending: true });
     if (data) setPlantillas(data);
   };
 
@@ -226,8 +238,8 @@ export default function App() {
         const { error } = await supabase.from('gym_logs').update(datosFormulario).eq('id', idEditando);
         errorGuardado = error;
       } else {
-        const { error } = await supabase.from('gym_logs').insert([datosFormulario]);
-        errorGuardado = error;
+        const { error } = await supabase.from('gym_logs').insert([{ ...datosFormulario, user_id: session.user.id }]);
+errorGuardado = error;
       }
       
       if (errorGuardado) throw errorGuardado;
@@ -275,10 +287,18 @@ export default function App() {
     if (idEditando === id) resetForm();
   };
 
-  const agregarPlantilla = async (e) => {
+ const agregarPlantilla = async (e) => {
     e.preventDefault();
-    if (!nuevaPlantilla.ejercicio) return;
-    const nuevaData = { tipo_dia: nuevaPlantilla.rutina, nombre_ejercicio: nuevaPlantilla.ejercicio, meta_sets: parseInt(nuevaPlantilla.metaSets) || 0, meta_reps: nuevaPlantilla.metaReps };
+    if (!nuevaPlantilla.ejercicio || !session) return; // Seguridad extra
+    
+    const nuevaData = { 
+      tipo_dia: nuevaPlantilla.rutina, 
+      nombre_ejercicio: nuevaPlantilla.ejercicio, 
+      meta_sets: parseInt(nuevaPlantilla.metaSets) || 0, 
+      meta_reps: nuevaPlantilla.metaReps,
+      user_id: session.user.id // <-- AQUÍ PEGAMOS TU ETIQUETA AUTOMÁTICAMENTE
+    };
+
     const { data, error } = await supabase.from('gym_rutinas').insert([nuevaData]).select();
     if (!error && data) {
       setPlantillas([...plantillas, data[0]]);
