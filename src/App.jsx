@@ -446,8 +446,7 @@ const moverEjercicio = async (indexActual, direccion, e) => {
         </svg>
       </div>
 
-        <div className="w-full max-w-sm bg-zinc-950 p-8 rounded-sm border border-red-900/30 shadow-[0_0_40px_rgba(153,27,27,0.15)] relative z-10 animate-fade-in">
-          
+<div className="w-full max-w-sm bg-zinc-950/60 backdrop-blur-md p-8 rounded-sm border border-red-900/50 shadow-[0_0_40px_rgba(153,27,27,0.15)] relative z-10 animate-fade-in">          
           {/* IDENTIDAD: MONK KILLER */}
           <div className="flex flex-col items-center justify-center gap-4 mb-8">
             <div className="w-14 h-14 bg-gradient-to-br from-red-700 to-red-950 flex items-center justify-center border-2 border-red-800 shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-[pulse_3s_ease-in-out_infinite]">
