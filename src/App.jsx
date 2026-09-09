@@ -422,7 +422,7 @@ const moverEjercicio = async (indexActual, direccion, e) => {
         {/* LUZ DE FONDO (Nebulosa roja profunda) */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-red-900/20 blur-[100px] rounded-full pointer-events-none"></div>
      {/* SILUETA ESPARTANA DIFUSA */}
-<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-10 z-0 scale-150">
+     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-20 z-0 scale-150">
         <svg height="800px" width="800px" version="1.1" id="_x32_" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" xml:space="preserve" className="text-zinc-500 w-96 h-96">
           <g fill="currentColor">
             <path d="M209.145,273.343c-8.941-6.364-17.106-12.295-23.094-16.882c-8.357-6.395-19.547-15.92-31.763-26.711
@@ -445,8 +445,7 @@ const moverEjercicio = async (indexActual, direccion, e) => {
           </g>
         </svg>
       </div>
-
-<div className="w-full max-w-sm bg-zinc-950/60 backdrop-blur-md p-8 rounded-sm border border-red-900/50 shadow-[0_0_40px_rgba(153,27,27,0.15)] relative z-10 animate-fade-in">          
+<div className="w-full max-w-sm bg-black/50 backdrop-blur-md p-8 rounded-sm border border-red-600/70 shadow-[0_0_35px_rgba(220,38,38,0.35)] relative z-10 animate-fade-in">
           {/* IDENTIDAD: MONK KILLER */}
           <div className="flex flex-col items-center justify-center gap-4 mb-8">
             <div className="w-14 h-14 bg-gradient-to-br from-red-700 to-red-950 flex items-center justify-center border-2 border-red-800 shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-[pulse_3s_ease-in-out_infinite]">
