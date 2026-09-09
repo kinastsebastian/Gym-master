@@ -36,6 +36,43 @@ export default function App() {
   const [ejercicioFiltro, setEjercicioFiltro] = useState('');
   const [datosGrafico, setDatosGrafico] = useState([]);
 
+// --- ESTADOS DE AUTENTICACIÓN ---
+  const [session, setSession] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true); // Para alternar entre Iniciar Sesión y Registrarse
+  // --------------------------------
+
+// --- LÓGICA DE SESIÓN ---
+  useEffect(() => {
+    // Revisa si ya hay una sesión guardada al abrir la app
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // Escucha los cambios (cuando entras o sales)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const manejarAuth = async (e) => {
+    e.preventDefault();
+    if (isLogin) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) alert("Error al iniciar sesión: " + error.message);
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) alert("Error al registrarse: " + error.message);
+      else alert("¡Registro exitoso! Ya puedes iniciar sesión.");
+    }
+  };
+  // -------------------------
+
   useEffect(() => {
     cargarEjerciciosDia();
     cargarPlantillas();
@@ -356,6 +393,57 @@ const moverEjercicio = async (indexActual, direccion, e) => {
   // ----------------------------------------------------
 
   const ejerciciosPlaneadosHoy = plantillas.filter(p => p.tipo_dia === rutinaActual);
+
+// --- PANTALLA DE INICIO DE SESIÓN ---
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col justify-center items-center p-4 font-sans text-zinc-100">
+        <div className="w-full max-w-sm bg-zinc-900 p-6 rounded-sm border border-zinc-800 shadow-2xl animate-fade-in">
+          <h1 className="text-xl font-black text-white uppercase tracking-widest text-center mb-1">Gym Master</h1>
+          <h2 className="text-xs font-black text-red-500 uppercase tracking-widest mb-6 text-center border-b border-zinc-800 pb-3">
+            {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
+          </h2>
+          
+          <form onSubmit={manejarAuth} className="space-y-4">
+            <div>
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Correo Electrónico</span>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-2.5 bg-black border border-zinc-800 rounded-sm text-white outline-none font-bold text-xs focus:border-red-600 transition-colors" 
+                required 
+              />
+            </div>
+            <div>
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Contraseña</span>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2.5 bg-black border border-zinc-800 rounded-sm text-white outline-none font-bold text-xs focus:border-red-600 transition-colors" 
+                required 
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="w-full bg-red-700 text-white font-black uppercase tracking-widest py-3 rounded-sm hover:bg-red-600 transition-all border border-red-600 active:scale-95 text-xs mt-2"
+            >
+              {isLogin ? 'Entrar' : 'Registrarse'}
+            </button>
+          </form>
+
+          <button 
+            onClick={() => setIsLogin(!isLogin)} 
+            className="w-full mt-5 text-[10px] text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-wider text-center transition-colors"
+          >
+            {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  // ------------------------------------
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 p-3 font-sans pb-24 selection:bg-red-900 selection:text-white">
