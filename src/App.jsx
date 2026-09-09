@@ -421,8 +421,8 @@ const moverEjercicio = async (indexActual, direccion, e) => {
         
         {/* LUZ DE FONDO (Nebulosa roja profunda) */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-red-900/20 blur-[100px] rounded-full pointer-events-none"></div>
-      {/* SILUETA ESPARTANA DIFUSA */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.04] blur-[1px] z-0 scale-150">
+     {/* SILUETA ESPARTANA DIFUSA */}
+<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-10 z-0 scale-150">
         <svg height="800px" width="800px" version="1.1" id="_x32_" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" xml:space="preserve" className="text-zinc-500 w-96 h-96">
           <g fill="currentColor">
             <path d="M209.145,273.343c-8.941-6.364-17.106-12.295-23.094-16.882c-8.357-6.395-19.547-15.92-31.763-26.711
