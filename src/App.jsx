@@ -465,13 +465,24 @@ const moverEjercicio = async (indexActual, direccion, e) => {
   }
   // ------------------------------------
 
-  return (
+ return (
     <div className="min-h-screen bg-black text-zinc-300 p-3 font-sans pb-24 selection:bg-red-900 selection:text-white">
       <datalist id="memoria-ejercicios">
         {listaEjerciciosHistorico.map(ej => <option key={ej} value={ej} />)}
       </datalist>
 
       <div className="max-w-md mx-auto">
+        
+        {/* BOTÓN DE CERRAR SESIÓN */}
+        <div className="flex justify-end mb-1 mt-1">
+          <button 
+            onClick={() => supabase.auth.signOut()} 
+            className="text-[9px] text-zinc-500 hover:text-red-500 font-black uppercase tracking-widest border border-zinc-800 px-2 py-1 rounded-sm transition-colors"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
+
         {/* COMPACTO: Encabezado */}
         <div className="flex items-center justify-center gap-2 mb-4 mt-1">
           <div className="w-10 h-10 bg-gradient-to-br from-red-700 to-red-950 flex items-center justify-center border-2 border-red-800 shadow-[0_0_10px_rgba(220,38,38,0.4)]">
