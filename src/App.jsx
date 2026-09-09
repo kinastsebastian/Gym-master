@@ -417,47 +417,61 @@ const moverEjercicio = async (indexActual, direccion, e) => {
 // --- PANTALLA DE INICIO DE SESIÓN ---
   if (!session) {
     return (
-      <div className="min-h-screen bg-black flex flex-col justify-center items-center p-4 font-sans text-zinc-100">
-        <div className="w-full max-w-sm bg-zinc-900 p-6 rounded-sm border border-zinc-800 shadow-2xl animate-fade-in">
-          <h1 className="text-xl font-black text-white uppercase tracking-widest text-center mb-1">Gym Master</h1>
-          <h2 className="text-xs font-black text-red-500 uppercase tracking-widest mb-6 text-center border-b border-zinc-800 pb-3">
-            {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
+      <div className="min-h-screen bg-black flex flex-col justify-center items-center p-4 font-sans text-zinc-100 selection:bg-red-900 selection:text-white relative overflow-hidden">
+        
+        {/* LUZ DE FONDO (Nebulosa roja profunda) */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-red-900/20 blur-[100px] rounded-full pointer-events-none"></div>
+
+        <div className="w-full max-w-sm bg-zinc-950 p-8 rounded-sm border border-red-900/30 shadow-[0_0_40px_rgba(153,27,27,0.15)] relative z-10 animate-fade-in">
+          
+          {/* IDENTIDAD: MONK KILLER */}
+          <div className="flex flex-col items-center justify-center gap-4 mb-8">
+            <div className="w-14 h-14 bg-gradient-to-br from-red-700 to-red-950 flex items-center justify-center border-2 border-red-800 shadow-[0_0_20px_rgba(220,38,38,0.6)] animate-[pulse_3s_ease-in-out_infinite]">
+              <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" /><line x1="13" y1="19" x2="19" y2="13" /><line x1="16" y1="16" x2="20" y2="20" /><line x1="19" y1="21" x2="21" y2="19" /><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" /><line x1="5" y1="14" x2="9" y2="18" /><line x1="7" y1="17" x2="4" y2="20" /><line x1="3" y1="19" x2="5" y2="21" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Monk Killer</h1>
+          </div>
+
+          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6 text-center border-b border-zinc-800 pb-3">
+            {isLogin ? 'Acceso Restringido' : 'Forjar Nuevo Guerrero'}
           </h2>
           
           <form onSubmit={manejarAuth} className="space-y-4">
             <div>
-              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Correo Electrónico</span>
               <input 
                 type="email" 
+                placeholder="CORREO ELECTRÓNICO"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2.5 bg-black border border-zinc-800 rounded-sm text-white outline-none font-bold text-xs focus:border-red-600 transition-colors" 
+                className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white text-center outline-none font-bold text-xs focus:border-red-600 focus:shadow-[0_0_15px_rgba(220,38,38,0.2)] transition-all placeholder-zinc-700 uppercase tracking-widest" 
                 required 
               />
             </div>
             <div>
-              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 block">Contraseña</span>
               <input 
                 type="password" 
+                placeholder="CONTRASEÑA"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2.5 bg-black border border-zinc-800 rounded-sm text-white outline-none font-bold text-xs focus:border-red-600 transition-colors" 
+                className="w-full p-3 bg-black border border-zinc-800 rounded-sm text-white text-center outline-none font-bold text-xs focus:border-red-600 focus:shadow-[0_0_15px_rgba(220,38,38,0.2)] transition-all placeholder-zinc-700 uppercase tracking-widest" 
                 required 
               />
             </div>
             <button 
               type="submit" 
-              className="w-full bg-red-700 text-white font-black uppercase tracking-widest py-3 rounded-sm hover:bg-red-600 transition-all border border-red-600 active:scale-95 text-xs mt-2"
+              className="w-full bg-red-700 text-white font-black uppercase tracking-widest py-3.5 rounded-sm hover:bg-red-600 transition-all border border-red-600 active:scale-95 text-xs mt-6 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
             >
-              {isLogin ? 'Entrar' : 'Registrarse'}
+              {isLogin ? 'Entrar al Dojo' : 'Crear Cuenta'}
             </button>
           </form>
 
           <button 
             onClick={() => setIsLogin(!isLogin)} 
-            className="w-full mt-5 text-[10px] text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-wider text-center transition-colors"
+            className="w-full mt-6 text-[10px] text-zinc-500 hover:text-red-500 font-bold uppercase tracking-wider text-center transition-colors"
           >
-            {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
+            {isLogin ? '¿Sangre nueva? Regístrate aquí' : '¿Ya eres miembro? Inicia sesión'}
           </button>
         </div>
       </div>
