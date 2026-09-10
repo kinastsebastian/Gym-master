@@ -73,11 +73,14 @@ export default function App() {
   };
   // -------------------------
 
-  useEffect(() => {
-    cargarEjerciciosDia();
-    cargarPlantillas();
-    cargarListaNombresEjercicios();
-  }, [rutinaActual, tabActiva]);
+useEffect(() => {
+    // Solo pedimos los datos si Supabase ya confirmó que tienes la llave (session)
+    if (session) {
+      cargarEjerciciosDia();
+      cargarPlantillas();
+      cargarListaNombresEjercicios();
+    }
+  }, [rutinaActual, tabActiva, session]); // <-- AQUÍ ESTÁ LA MAGIA: Agregamos 'session'
 
   useEffect(() => {
     if (ejercicioFiltro) cargarDatosGrafico();
