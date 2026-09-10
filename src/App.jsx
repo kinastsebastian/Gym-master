@@ -47,8 +47,13 @@ export default function App() {
 const cargarCategorias = async () => {
     const { data, error } = await supabase
       .from('gym_categorias')
-      .select('nombre')
-      .order('created_at', { ascending: true });
+      .select('nombre, orden')
+      .order('orden', { ascending: true }); // <-- Ordena según el número asignado
+      
+    if (!error && data) {
+      setTiposRutina(data.map(cat => cat.nombre));
+    }
+  };
       
     if (!error && data) {
       setTiposRutina(data.map(cat => cat.nombre));
