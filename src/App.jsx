@@ -27,7 +27,9 @@ export default function App() {
   const [timerActivo, setTimerActivo] = useState(false);
   const timerRef = useRef(null);
 
-  const tiposRutina = ['Full Body', 'Upper Body', 'Lower Body', 'Arms/Delts', 'Dia de Mejora'];
+ const [tiposRutina, setTiposRutina] = useState([]);
+ const [nuevaCategoria, setNuevaCategoria] = useState(''); // <-- NUEVO
+  const [creandoCategoria, setCreandoCategoria] = useState(false); // <-- NUEVO
 
   const [plantillas, setPlantillas] = useState([]);
   const [nuevaPlantilla, setNuevaPlantilla] = useState({ rutina: 'Full Body', ejercicio: '', metaSets: 3, metaReps: '' });
@@ -42,6 +44,34 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true); // Para alternar entre Iniciar Sesión y Registrarse
   // --------------------------------
+const cargarCategorias = async () => {
+    const { data, error } = await supabase
+      .from('gym_categorias')
+      .select('nombre')
+      .order('created_at', { ascending: true });
+      
+    if (!error && data) {
+      setTiposRutina(data.map(cat => cat.nombre));
+    }
+  };
+
+  const agregarNuevaCategoria = async (e) => {
+    e.preventDefault();
+    if (!nuevaCategoria.trim()) return;
+
+    const dataConFirma = { 
+      nombre: nuevaCategoria.trim().toUpperCase(), 
+      user_id: session.user.id 
+    };
+
+    const { data, error } = await supabase.from('gym_categorias').insert([dataConFirma]).select();
+    
+    if (!error && data) {
+      setTiposRutina([...tiposRutina, data[0].nombre]);
+      setNuevaCategoria('');
+      setCreandoCategoria(false);
+    }
+  };
 
 // --- LÓGICA DE SESIÓN ---
   useEffect(() => {
@@ -74,13 +104,13 @@ export default function App() {
   // -------------------------
 
 useEffect(() => {
-    // Solo pedimos los datos si Supabase ya confirmó que tienes la llave (session)
     if (session) {
       cargarEjerciciosDia();
       cargarPlantillas();
       cargarListaNombresEjercicios();
+      cargarCategorias(); // <-- ESTA ES LA LÍNEA NUEVA
     }
-  }, [rutinaActual, tabActiva, session]); // <-- AQUÍ ESTÁ LA MAGIA: Agregamos 'session'
+  }, [rutinaActual, tabActiva, session]);
 
   useEffect(() => {
     if (ejercicioFiltro) cargarDatosGrafico();
@@ -575,10 +605,42 @@ const moverEjercicio = async (indexActual, direccion, e) => {
 
         {tabActiva === 'entrenar' && (
           <div className="animate-fade-in">
-            <div className="bg-zinc-900 rounded-sm p-1.5 mb-4 border border-zinc-800">
-              <select value={rutinaActual} onChange={(e) => setRutinaActual(e.target.value)} className="w-full bg-zinc-950 text-white font-bold rounded-sm p-2 outline-none focus:ring-1 focus:ring-red-600 appearance-none border border-zinc-800 uppercase tracking-widest text-center cursor-pointer text-sm">
-                {tiposRutina.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
-              </select>
+           <div className="bg-zinc-900 rounded-sm p-1.5 mb-4 border border-zinc-800">
+              {!creandoCategoria ? (
+                <div className="flex gap-1.5">
+                  <select 
+                    value={rutinaActual} 
+                    onChange={(e) => setRutinaActual(e.target.value)} 
+                    className="flex-1 bg-zinc-950 text-white font-bold rounded-sm p-2 outline-none focus:ring-1 focus:ring-red-600 appearance-none border border-zinc-800 uppercase tracking-widest text-center cursor-pointer text-sm"
+                  >
+                    {tiposRutina.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                  </select>
+                  <button 
+                    onClick={() => setCreandoCategoria(true)}
+                    className="bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-red-500 hover:border-red-900/50 w-10 rounded-sm font-black text-xl flex items-center justify-center transition-colors shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                    title="Nueva Rutina"
+                  >
+                    +
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={agregarNuevaCategoria} className="flex gap-1.5 animate-fade-in">
+                  <input 
+                    type="text" 
+                    value={nuevaCategoria}
+                    onChange={(e) => setNuevaCategoria(e.target.value)}
+                    placeholder="NUEVO NOMBRE..."
+                    autoFocus
+                    className="flex-1 bg-zinc-950 text-white font-bold rounded-sm p-2 outline-none focus:ring-1 focus:ring-red-600 border border-red-900/50 uppercase tracking-widest text-center text-sm shadow-[0_0_15px_rgba(220,38,38,0.2)]"
+                  />
+                  <button type="submit" className="bg-red-900/20 text-red-500 border border-red-900/50 hover:bg-red-800 hover:text-white w-10 rounded-sm font-black flex items-center justify-center transition-colors">
+                    ✓
+                  </button>
+                  <button type="button" onClick={() => setCreandoCategoria(false)} className="bg-zinc-950 text-zinc-500 border border-zinc-800 hover:text-zinc-300 w-10 rounded-sm font-black flex items-center justify-center transition-colors">
+                    ×
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* COMPACTO: DESTROYER CONTRACT */}
