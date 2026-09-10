@@ -56,40 +56,17 @@ const cargarCategorias = async () => {
   };
 
 
-  const agregarNuevaCategoria = async (e) => {
+ const agregarNuevaCategoria = async (e) => {
     e.preventDefault();
     if (!nuevaCategoria.trim()) return;
 
+    const nuevoOrden = tiposRutina.length + 1;
+
     const dataConFirma = { 
-     nombre: nuevaCategoria.trim(),
-      user_id: session.user.id 
+      nombre: nuevaCategoria.trim(), 
+      user_id: session.user.id,
+      orden: nuevoOrden 
     };
-
-    const eliminarCategoria = async () => {
-    if (!rutinaActual) return;
-    
-    // Alerta de seguridad para evitar borrar por accidente
-    if (!window.confirm(`¿Seguro que quieres eliminar la pestaña "${rutinaActual}"?`)) return;
-
-    // Le decimos a Supabase que borre esta categoría
-    const { error } = await supabase
-      .from('gym_categorias')
-      .delete()
-      .match({ nombre: rutinaActual, user_id: session.user.id });
-
-    if (!error) {
-      // Actualizamos la pantalla sacando la rutina eliminada
-      const nuevasRutinas = tiposRutina.filter(r => r !== rutinaActual);
-      setTiposRutina(nuevasRutinas);
-      
-      // Seleccionamos otra rutina automáticamente si quedan opciones
-      if (nuevasRutinas.length > 0) {
-        setRutinaActual(nuevasRutinas[0]);
-      } else {
-        setRutinaActual('');
-      }
-    }
-  };
 
     const { data, error } = await supabase.from('gym_categorias').insert([dataConFirma]).select();
     
@@ -97,6 +74,28 @@ const cargarCategorias = async () => {
       setTiposRutina([...tiposRutina, data[0].nombre]);
       setNuevaCategoria('');
       setCreandoCategoria(false);
+    }
+  };
+
+  const eliminarCategoria = async () => {
+    if (!rutinaActual) return;
+    
+    if (!window.confirm(`¿Seguro que quieres eliminar la pestaña "${rutinaActual}"?`)) return;
+
+    const { error } = await supabase
+      .from('gym_categorias')
+      .delete()
+      .match({ nombre: rutinaActual, user_id: session.user.id });
+
+    if (!error) {
+      const nuevasRutinas = tiposRutina.filter(r => r !== rutinaActual);
+      setTiposRutina(nuevasRutinas);
+      
+      if (nuevasRutinas.length > 0) {
+        setRutinaActual(nuevasRutinas[0]);
+      } else {
+        setRutinaActual('');
+      }
     }
   };
 
