@@ -64,6 +64,32 @@ const cargarCategorias = async () => {
       user_id: session.user.id 
     };
 
+    const eliminarCategoria = async () => {
+    if (!rutinaActual) return;
+    
+    // Alerta de seguridad para evitar borrar por accidente
+    if (!window.confirm(`¿Seguro que quieres eliminar la pestaña "${rutinaActual}"?`)) return;
+
+    // Le decimos a Supabase que borre esta categoría
+    const { error } = await supabase
+      .from('gym_categorias')
+      .delete()
+      .match({ nombre: rutinaActual, user_id: session.user.id });
+
+    if (!error) {
+      // Actualizamos la pantalla sacando la rutina eliminada
+      const nuevasRutinas = tiposRutina.filter(r => r !== rutinaActual);
+      setTiposRutina(nuevasRutinas);
+      
+      // Seleccionamos otra rutina automáticamente si quedan opciones
+      if (nuevasRutinas.length > 0) {
+        setRutinaActual(nuevasRutinas[0]);
+      } else {
+        setRutinaActual('');
+      }
+    }
+  };
+
     const { data, error } = await supabase.from('gym_categorias').insert([dataConFirma]).select();
     
     if (!error && data) {
@@ -605,7 +631,8 @@ const moverEjercicio = async (indexActual, direccion, e) => {
 
         {tabActiva === 'entrenar' && (
           <div className="animate-fade-in">
-           <div className="bg-zinc-900 rounded-sm p-1.5 mb-4 border border-zinc-800">
+   
+   <div className="bg-zinc-900 rounded-sm p-1.5 mb-4 border border-zinc-800">
               {!creandoCategoria ? (
                 <div className="flex gap-1.5">
                   <select 
@@ -622,6 +649,16 @@ const moverEjercicio = async (indexActual, direccion, e) => {
                   >
                     +
                   </button>
+                  {/* NUEVO BOTÓN DE BASURERO */}
+                  {tiposRutina.length > 0 && (
+                    <button 
+                      onClick={eliminarCategoria}
+                      className="bg-zinc-950 border border-zinc-800 text-zinc-600 hover:text-red-600 hover:border-red-900/50 w-10 rounded-sm font-black flex items-center justify-center transition-colors shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                      title="Eliminar Rutina Actual"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <form onSubmit={agregarNuevaCategoria} className="flex gap-1.5 animate-fade-in">
