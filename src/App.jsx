@@ -60,7 +60,7 @@ const cargarCategorias = async () => {
     if (!nuevaCategoria.trim()) return;
 
     const dataConFirma = { 
-      nombre: nuevaCategoria.trim().toUpperCase(), 
+     nombre: nuevaCategoria.trim(),
       user_id: session.user.id 
     };
 
