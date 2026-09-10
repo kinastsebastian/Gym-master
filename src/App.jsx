@@ -631,7 +631,6 @@ const moverEjercicio = async (indexActual, direccion, e) => {
 
         {tabActiva === 'entrenar' && (
           <div className="animate-fade-in">
-   
    <div className="bg-zinc-900 rounded-sm p-1.5 mb-4 border border-zinc-800">
               {!creandoCategoria ? (
                 <div className="flex gap-1.5">
