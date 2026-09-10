@@ -54,11 +54,7 @@ const cargarCategorias = async () => {
       setTiposRutina(data.map(cat => cat.nombre));
     }
   };
-      
-    if (!error && data) {
-      setTiposRutina(data.map(cat => cat.nombre));
-    }
-  };
+
 
   const agregarNuevaCategoria = async (e) => {
     e.preventDefault();
