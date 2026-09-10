@@ -302,7 +302,15 @@ errorGuardado = error;
       user_id: session.user.id // <-- AQUÍ PEGAMOS TU ETIQUETA AUTOMÁTICAMENTE
     };
 
-    const { data, error } = await supabase.from('gym_rutinas').insert([nuevaData]).select();
+    // 1. Le agregamos tu "firma" de usuario a los datos antes de enviarlos
+    const dataConFirma = { 
+      ...nuevaData, 
+      user_id: session.user.id 
+    };
+
+    // 2. Ahora enviamos los datos con la firma incluida
+    const { data, error } = await supabase.from('gym_rutinas').insert([dataConFirma]).select();
+    
     if (!error && data) {
       setPlantillas([...plantillas, data[0]]);
       setNuevaPlantilla({ ...nuevaPlantilla, ejercicio: '', metaSets: 3, metaReps: '' });
